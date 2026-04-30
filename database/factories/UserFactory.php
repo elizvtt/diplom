@@ -24,10 +24,18 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            // Замінили name на full_name
+            'full_name' => fake()->name(), 
+            
             'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            
+            // Додали ваші нові поля:
+            'email_notification' => 1,
+            'role' => fake()->randomElement(['user', 'admin']), // Випадково призначить user або admin
+            'is_active' => 1,
+            'avatar_path' => null,
+            
             'remember_token' => Str::random(10),
         ];
     }

@@ -1,0 +1,57 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use App\Enums\TeamRole;
+
+class Team extends Model
+{
+    use HasFactory;
+
+    /**
+     * Атрибуты, которые могут быть присвоены массово
+     * @var list<string>
+     */
+    protected $fillable = [
+        'project_id',
+        'user_id',
+        'role',
+        'is_active',
+    ];
+
+    /**
+     * Правила преобразования типов
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            
+            'role' => TeamRole::class,
+            // 'is_active' => 'boolean', // Автоматично перетворює 0/1 з бази на true/false
+
+        ];
+    }
+    
+    /**
+     * Получить проект, к которому привязан этот участник
+     * @return BelongsTo<Project, $this>
+     */
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
+    }
+
+    /**
+     * Получить пользователя, который является участником команды
+     * @return BelongsTo<User, $this>
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+
+}

@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Enums\UserRole;
 
 class User extends Authenticatable
 {
@@ -13,36 +14,67 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
+     * Атрибуты, которые могут быть присвоены массово
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'full_name',
         'email',
         'password',
+        'email_notification',
+        'role',
+        'is_active',
+        'avatar_path',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
+     * Атрибуты, которые следует скрыть для сериализации.
      * @var list<string>
      */
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
+     * Получите атрибуты, которые следует преобразовать.
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // 'is_active' => 'boolean',
+            // 'email_notification' => 'boolean',
+            'role' => UserRole::class,
         ];
     }
+
+
+    /**
+     * Получить все проекты пользователя
+     * @return HasMany<Project,$this>
+     */
+    public function projects()
+    {
+        return $this->hasMany(Project::class, 'owner_id');
+    }
+
+    /**
+     * Загрузка модели и регистрация событий.
+     * @return void
+     */
+    protected static function booted()
+    {
+        // Событие срабатывает каждый раз ПОСЛЕ сохранения изменений пользователя
+        static::updated(function (User $user) {
+            
+            // Проверяем: изменилось ли поле is_active И равно ли оно теперь 0?
+            if ($user->wasChanged('is_active') && $user->is_active == 0) {
+                
+                // Находим все проекты этого пользователя и выключаем их
+                $user->projects()->update(['is_active' => 0]);
+            }
+        });
+    }
+
 }
