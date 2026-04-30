@@ -40,65 +40,61 @@ export default function Auth() {
         let newErrors = {};
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const smallLetterRegex = /[a-z]/;
+        const bigLetterRegex = /[A-Z]/;
+        const spicialCharsRegex = /[-_^.*\/]/;
+        const latinLettersRegex = /[а-яА-ЯёЁіІїЇєЄґҐ]/;
+        
         const hasDigits = /\d/;
 
         
         // Валидация Email
-        if (!formData.email) {
-            newErrors.email = "Введіть пошту";
+        const emailError = [
+            { hasError: !formData.email, msg: "Введіть пошту" },
+            { hasError: !emailRegex.test(formData.email), msg: "Некоректна адреса" }
+        ].find(rule => rule.hasError)?.msg;
+
+        if (emailError) newErrors.email = emailError;
+
+        // if (!formData.email) {
+        //     newErrors.email = "Введіть пошту";
             
-        } else if (!emailRegex.test(formData.email)) {
-            newErrors.email = "Некоректна адреса";
+        // } else if (!emailRegex.test(formData.email)) {
+        //     newErrors.email = "Некоректна адреса";
             
-        }
+        // }
 
         // Валидация пароля
-        if (!formData.password) {
-            newErrors.password = "Введіть пароль";
-            
-        } else if (formData.password.length < 6) {
-            newErrors.password = "Має містити не менше 6 символів";
-            
-        } else if (!/[a-z]/.test(formData.password)) {
-            newErrors.password = "Додайте хоча б одну малу англійську літеру";
-            
-        } else if (!/[A-Z]/.test(formData.password)) {
-            newErrors.password = "Додайте хоча б одну велику англійську літеру";
-            
-        } else if (!/[-._!"`'#%&,:;<>=@{}~\$\(\)\*\+\/\\\?\[\]\^\|]/.test(formData.password)) {
-            // Проверяем наличие хотя бы одного спецсимвола
-            newErrors.password = "Додайте хоча б один спецсимвол";
-            
-        } else if (/[а-яА-ЯёЁіІїЇєЄґҐ]/.test(formData.password)) {
-            // Бонус: так как буквы должны быть английские, запрещаем кириллицу
-            newErrors.password = "Може містити лише літери латинського алфавіту";
-            
-        }
+        const passwordError = [
+            { hasError: !formData.password, msg: "Введіть пароль" },
+            { hasError: formData.password?.length < 6, msg: "Має містити не менше 6 символів" },
+            { hasError: !smallLetterRegex.test(formData.password), msg: "Додайте хоча б одну малу англійську літеру" },
+            { hasError: !bigLetterRegex.test(formData.password), msg: "Додайте хоча б одну велику англійську літеру" },
+            { hasError: !spicialCharsRegex.test(formData.password), msg: "Додайте хоча б один спецсимвол" },
+            { hasError: latinLettersRegex.test(formData.password), msg: "Може містити лише літери латинського алфавіту" }
+        ].find(rule => rule.hasError)?.msg;
 
-        // Валидация специфичная для Регистрации
+        if (passwordError) newErrors.password = passwordError;
+
+
+        // Валидация полей Регистрации
         if (!isLogin) {
-            
 
-            if (!formData.name.trim()) {
-                newErrors.name = "Введіть ім'я";
-                
-            } else if (hasDigits.test(formData.name)) {
-                newErrors.name = "Не може містити цифри";
-                
-            }
+            // Проверка имени: не пустое и нет циф в имени
+            const nameError = [
+                { hasError: !formData.name?.trim(), msg: "Введіть ім'я" },
+                { hasError: hasDigits.test(formData.name), msg: "Не може містити цифри" }
+            ].find(rule => rule.hasError)?.msg;
+            if (nameError) newErrors.name = nameError;
 
-            if (!formData.surname.trim()) {
-                newErrors.surname = "Введіть прізвище";
-                
-            } else if (hasDigits.test(formData.surname)) {
-                newErrors.surname = "Не може містити цифри";
-                
-            }
+            // Проверка фамилии: не пустое и нет цифр
+            const surnameError = [
+                { hasError: !formData.surname?.trim(), msg: "Введіть прізвище" },
+                { hasError: hasDigits.test(formData.surname), msg: "Не може містити цифри" }
+            ].find(rule => rule.hasError)?.msg;
+            if (surnameError) newErrors.surname = surnameError;
 
-            if (!formData.role) {
-                newErrors.role = "Оберіть роль";
-                
-            }
+            if (!formData.role) newErrors.role = "Оберіть роль";
         }
 
         const isValid = Object.keys(newErrors).length === 0;
@@ -143,7 +139,7 @@ export default function Auth() {
                 <li>Мінімум 6 символів</li>
                 <li>Хоча б одна велика англійська літера (A-Z)</li>
                 <li>Хоча б одна мала англійська літера (a-z)</li>
-                <li>Хоча б один спецсимвол</li>
+                <li>Хоча б один спецсимвол (-, ., *, /)</li>
             </ul>
         </Box>
     );
