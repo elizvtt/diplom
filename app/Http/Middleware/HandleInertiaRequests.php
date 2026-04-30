@@ -33,6 +33,11 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+
+                // Передаем 5 последних непрочитанных уведомлений на КАЖДУЮ страницу
+                // 'unread_notifications' => $request->user() ? $request->user()->unreadNotifications()->take(5)->get() : [],
+                // Передаем общее количество для красной точки
+                // 'unread_count' => $request->user() ? $request->user()->unreadNotifications()->count() : 0,
             ],
         ];
     }

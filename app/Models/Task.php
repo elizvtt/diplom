@@ -30,7 +30,7 @@ class Task extends Model
 
     /**
      * Правила преобразования типов
-     * @return array<string, string>
+     * @return array<string,string>
      */
     protected function casts(): array
     {
@@ -43,7 +43,7 @@ class Task extends Model
 
     /**
      * Проєкт в котором это задание
-     * @return BelongsTo<Project, $this>
+     * @return BelongsTo<Project,$this>
      */
     public function project()
     {
@@ -52,10 +52,11 @@ class Task extends Model
 
     /**
      * создатель задания
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<User,$this>
      */
     public function user()
     {
         return $this->belongsTo(User::class, 'creator_id');
     }
+
 }

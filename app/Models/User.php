@@ -43,8 +43,6 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            // 'is_active' => 'boolean',
-            // 'email_notification' => 'boolean',
             'role' => UserRole::class,
         ];
     }
@@ -73,8 +71,40 @@ class User extends Authenticatable
                 
                 // Находим все проекты этого пользователя и выключаем их
                 $user->projects()->update(['is_active' => 0]);
+
+                // Можно так же деактивировать все его задачи
+                // $user->tasks()->update(['is_active' => 0]);
+                
+                // И исключить из всех команд
+                // ProjectMember::where('user_id', $user->id)->update(['is_active' => 0]);
             }
         });
     }
+
+    // /**
+    //  * Связь с таблицей настроек уведомлений
+    //  */
+    // public function notificationSettings()
+    // {
+    //     return $this->hasMany(NotificationSetting::class);
+    // }
+
+    // /**
+    //  * Этот метод Laravel автоматически вызывает ПЕРЕД отправкой уведомления,
+    //  * если вы используете почту (mail). 
+    //  * Для базы данных мы сделаем свою проверку.
+    //  */
+    // public function prefersNotification(string $event, string $channel): bool
+    // {
+    //     // Ищем настройку пользователя
+    //     $setting = $this->notificationSettings()
+    //         ->where('event', $event)
+    //         ->where('channel', $channel)
+    //         ->first();
+
+    //     // Если настройки нет — по умолчанию отправляем (true)
+    //     // Если настройка есть — возвращаем её статус (is_enabled)
+    //     return $setting ? $setting->is_enabled : true;
+    // }
 
 }

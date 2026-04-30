@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->tinyInteger('email_notification')->default(1);
-            // $table->string('role');
             $table->enum('role', array_column(UserRole::cases(), 'value'));
             $table->tinyInteger('is_active')->default(1);
             $table->string('avatar_path')->nullable();

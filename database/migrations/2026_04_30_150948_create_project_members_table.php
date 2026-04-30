@@ -14,14 +14,16 @@ return new class extends Migration
     {
         Schema::create('project_members', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('project_id')->constrained('projects');
-            $table->foreignId('user_id')->constrained('users');
+            $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
 
             $table->enum('role', array_column(TeamRole::cases(), 'value'))->default(TeamRole::Spectator->value);
-            // $table->enum('role', ['owner', 'editor', 'spectator'])->default('spectator');
             $table->tinyInteger('is_active')->default(1);
 
             $table->dateTime('joined_at')->nullable();
+
+            // уникальная пара учасника и проэкта, чтоб не было дублей
+            $table->unique(['user_id', 'project_id']);
         });
     }
 
