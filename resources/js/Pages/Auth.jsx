@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
-import axios from 'axios';
+import { Head, useForm } from '@inertiajs/react';
 
 // импорт компонентов mui
 import { 
@@ -19,23 +18,31 @@ export default function Auth() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLogin, setIsLogin] = useState(true); // состояние для переключения вход/регистрация
     const [passwordTooltipOpen, setPasswordTooltipOpen] = useState(false);
-    const [errors, setErrors] = useState({}); // состояние для хранения ошибок валидации
-    const [formData, setFormData] = useState({ name: '', surname: '', email: '', password: '', role: '' }); // данные для отправки на сервер
+    const [frontendErrors, setfrontendErrors] = useState({}); // состояние для хранения ошибок валидации
+    const { data, setData, post, processing, errors: backendErrors, clearErrors, reset } = useForm({
+        name: '', 
+        surname: '', 
+        email: '', 
+        password: '', 
+        role: ''
+    });
+
 
     const handleClickShowPassword = () => setShowPassword((show) => !show);
     const handleMouseDownPassword = (event) => event.preventDefault();
     const handleMouseUpPassword = (event) => event.preventDefault();
 
     const handleInputChange = (field) => (event) => {
-        setFormData({ ...formData, [field]: event.target.value });
+        setData(field, event.target.value); // Метод setData от Inertia
+        if (frontendErrors[field]) setfrontendErrors({ ...frontendErrors, [field]: null }); // очистка ошибки при вводе
 
-        if (errors[field]) setErrors({ ...errors, [field]: null }); // очистка ошибки при вводе
+        clearErrors(field);
     };
 
 
     // валидация
     const validateData = () => {
-        console.log('data: ', formData );
+        console.log('data: ', data);
 
         let newErrors = {};
 
@@ -50,28 +57,20 @@ export default function Auth() {
         
         // Валидация Email
         const emailError = [
-            { hasError: !formData.email, msg: "Введіть пошту" },
-            { hasError: !emailRegex.test(formData.email), msg: "Некоректна адреса" }
+            { hasError: !data.email, msg: "Введіть пошту" },
+            { hasError: !emailRegex.test(data.email), msg: "Некоректна адреса" }
         ].find(rule => rule.hasError)?.msg;
 
         if (emailError) newErrors.email = emailError;
 
-        // if (!formData.email) {
-        //     newErrors.email = "Введіть пошту";
-            
-        // } else if (!emailRegex.test(formData.email)) {
-        //     newErrors.email = "Некоректна адреса";
-            
-        // }
-
         // Валидация пароля
         const passwordError = [
-            { hasError: !formData.password, msg: "Введіть пароль" },
-            { hasError: formData.password?.length < 6, msg: "Має містити не менше 6 символів" },
-            { hasError: !smallLetterRegex.test(formData.password), msg: "Додайте хоча б одну малу англійську літеру" },
-            { hasError: !bigLetterRegex.test(formData.password), msg: "Додайте хоча б одну велику англійську літеру" },
-            { hasError: !spicialCharsRegex.test(formData.password), msg: "Додайте хоча б один спецсимвол" },
-            { hasError: latinLettersRegex.test(formData.password), msg: "Може містити лише літери латинського алфавіту" }
+            { hasError: !data.password, msg: "Введіть пароль" },
+            { hasError: data.password?.length < 6, msg: "Має містити не менше 6 символів" },
+            { hasError: !smallLetterRegex.test(data.password), msg: "Додайте хоча б одну малу англійську літеру" },
+            { hasError: !bigLetterRegex.test(data.password), msg: "Додайте хоча б одну велику англійську літеру" },
+            { hasError: !spicialCharsRegex.test(data.password), msg: "Додайте хоча б один спецсимвол" },
+            { hasError: latinLettersRegex.test(data.password), msg: "Може містити лише літери латинського алфавіту" }
         ].find(rule => rule.hasError)?.msg;
 
         if (passwordError) newErrors.password = passwordError;
@@ -82,30 +81,24 @@ export default function Auth() {
 
             // Проверка имени: не пустое и нет циф в имени
             const nameError = [
-                { hasError: !formData.name?.trim(), msg: "Введіть ім'я" },
-                { hasError: hasDigits.test(formData.name), msg: "Не може містити цифри" }
+                { hasError: !data.name?.trim(), msg: "Введіть ім'я" },
+                { hasError: hasDigits.test(data.name), msg: "Не може містити цифри" }
             ].find(rule => rule.hasError)?.msg;
             if (nameError) newErrors.name = nameError;
 
             // Проверка фамилии: не пустое и нет цифр
             const surnameError = [
-                { hasError: !formData.surname?.trim(), msg: "Введіть прізвище" },
-                { hasError: hasDigits.test(formData.surname), msg: "Не може містити цифри" }
+                { hasError: !data.surname?.trim(), msg: "Введіть прізвище" },
+                { hasError: hasDigits.test(data.surname), msg: "Не може містити цифри" }
             ].find(rule => rule.hasError)?.msg;
             if (surnameError) newErrors.surname = surnameError;
 
-            if (!formData.role) newErrors.role = "Оберіть роль";
+            if (!data.role) newErrors.role = "Оберіть роль";
         }
 
-        const isValid = Object.keys(newErrors).length === 0;
+        setfrontendErrors(newErrors);
 
-        setErrors(newErrors);
-
-        // Если все ок - отправляем данные
-        if (isValid) {
-            console.log('Дані валідні: ', formData);
-            // submitForm(); 
-        } 
+        return Object.keys(newErrors).length === 0;
 
     };
 
@@ -113,23 +106,33 @@ export default function Auth() {
     const toggleMode = (event) => {
         event.preventDefault();
         setIsLogin(!isLogin);
-
-        setFormData({ name: '', surname: '', email: '', password: '', role: '' });
-        setErrors({}); // Очищаем ошибки при переключении
+        reset();
+        setfrontendErrors({}); // Очищаем ошибки при переключении
+        clearErrors();
         setPasswordTooltipOpen(false);
     };
 
-    const submitAuth = async (formData) => {
-        try {
-            console.log('formData: ', formData) ;
+    const submitAuth = (event) => {
+        event.preventDefault();
 
-            const response = await axios.post('/', {formData});
-            console.log('submitAuth response: ', response) ;
-        } catch (error) {
-            console.log('%submitAuth error: ', 'background: red; color: white' , error);
+        if (!validateData()) return;
+
+        if (isLogin) {
+            post('/login'); // Если это вход
+        } else {
+            post('/register', {
+                transform: (data) => ({
+                    ...data,
+                    full_name: `${data.name} ${data.surname}`.trim(),
+                }),
+            });
         }
-    }
+
+    };
     
+    // Объединяем ошибки для отображения в UI (сначала фронтенд, если нет - бэкенд)
+    const getError = (field) => frontendErrors[field] || backendErrors[field];
+
     const passwordRequirements = (
         <Box sx={{ p: 0.5 }}>
             <Typography sx={{ fontWeight: 'bold', fontSize: '0.85rem'}}>
@@ -173,7 +176,8 @@ export default function Auth() {
                 </Typography>
 
                 <Box 
-                    component="form" 
+                    component='form'
+                    onSubmit={submitAuth}
                     sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}
                 >
                     {!isLogin && (
@@ -184,10 +188,10 @@ export default function Auth() {
                                 variant="outlined"
                                 color='secondary'
                                 fullWidth
-                                value={formData.name}
+                                value={data.name}
                                 onChange={handleInputChange('name')}
-                                error={!!errors.name}
-                                helperText={errors.name}
+                                error={!!getError('name')}
+                                helperText={getError('name')}
                             />
 
                             <TextField
@@ -196,10 +200,10 @@ export default function Auth() {
                                 variant="outlined"
                                 color='secondary'
                                 fullWidth
-                                value={formData.surname}
+                                value={data.surname}
                                 onChange={handleInputChange('surname')}
-                                error={!!errors.surname}
-                                helperText={errors.surname}
+                                error={!!getError('surname')}
+                                helperText={getError('surname')}
                             />
                         </>
                     )}
@@ -209,10 +213,10 @@ export default function Auth() {
                         variant="outlined"
                         color='secondary'
                         fullWidth
-                        value={formData.email}
+                        value={data.email}
                         onChange={handleInputChange('email')}
-                        error={!!errors.email}
-                        helperText={errors.email}
+                        error={!!getError('email')}
+                        helperText={getError('email')}
                     />
                     
                     <Tooltip
@@ -223,7 +227,7 @@ export default function Auth() {
                         disableHoverListener
                         disableTouchListener
                     >
-                        <FormControl variant="outlined" color='secondary' fullWidth error={!!errors.password}>
+                        <FormControl variant="outlined" color='secondary' fullWidth error={!!getError('password')}>
                             <InputLabel htmlFor="password-input">Пароль</InputLabel>
                             <OutlinedInput
                                 id="password-input"
@@ -247,20 +251,20 @@ export default function Auth() {
                                     </InputAdornment>
                                 }
                                 label="Пароль"
-                                value={formData.password}
+                                value={data.password}
                                 onChange={handleInputChange('password')}
                             />
-                            {errors.password && <FormHelperText>{errors.password}</FormHelperText>}
+                            {getError('password') && <FormHelperText>{getError('password')}</FormHelperText>}
                         </FormControl>
                     </Tooltip>
                     
                     {/* выбор роли */}
                     {!isLogin && (
-                        <FormControl variant="outlined" color='secondary' fullWidth error={!!errors.role}>
+                        <FormControl variant="outlined" color='secondary' fullWidth error={!!getError('role')}>
                             <InputLabel htmlFor="role-select">Роль</InputLabel>
                             <Select
                                 id="role-select"
-                                value={formData.role}
+                                value={data.role}
                                 label="Роль"
                                 onChange={handleInputChange('role')}
                             
@@ -268,18 +272,22 @@ export default function Auth() {
                                 <MenuItem value={'student'}>Студент</MenuItem>
                                 <MenuItem value={'teacher'}>Викладач</MenuItem>
                             </Select>
-                            {errors.role && <FormHelperText>{errors.role}</FormHelperText>}
+                            {getError('role') && <FormHelperText>{getError('role')}</FormHelperText>}
                         </FormControl>
                     )}
 
                     <Button
+                        type="submit"
                         variant="contained"
                         color="secondary"
                         size="large"
-                        onClick={validateData}
                         fullWidth
+                        disabled={processing} // Блокируем кнопку, пока идет запрос на сервер
                     >
-                        {isLogin ? 'Увійти' : 'Зареєструватися'}
+                        {processing 
+                            ? 'Завантаження...' // Показываем текст загрузки
+                            : (isLogin ? 'Увійти' : 'Зареєструватися')
+                        }
                     </Button>
 
                     {isLogin && (
