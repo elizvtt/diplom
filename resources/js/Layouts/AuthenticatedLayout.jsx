@@ -1,176 +1,355 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import Dropdown from '@/Components/Dropdown';
-import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Link, usePage, router } from '@inertiajs/react';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
+import dayjs from 'dayjs';
+import 'dayjs/locale/uk';
+
+// Импорты MUI компонентов
+import {
+    AppBar, Box, Badge, CssBaseline, IconButton, Toolbar, Typography,
+    Avatar, Menu, MenuItem, Divider, ListItemIcon,
+    Dialog, DialogTitle, DialogContent, Chip,
+    Popover
+} from '@mui/material';
+
+// Импорты иконок
+import MenuIcon from '@mui/icons-material/Menu';
+import Logout from '@mui/icons-material/Logout';
+import CloseIcon from '@mui/icons-material/Close';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // Иконка календаря
+
 
 export default function AuthenticatedLayout({ header, children }) {
-    const user = usePage().props.auth.user;
+    const auth = usePage().props.auth; // Получаем данные юзера из Inertia
 
-    const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
+    // Стейт для модального окна (открыто/закрыто)
+    const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+
+    // Стейты для фильтров
+    const [statusFilter, setStatusFilter] = useState('unread'); // 'all', 'unread', 'read'
+    
+    // Стейт для выбранной даты
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [calendarAnchorEl, setCalendarAnchorEl] = useState(null); // Стейт для привязки Popover к иконке
+    const isCalendarOpen = Boolean(calendarAnchorEl);
+
+    // Фейковые данные (добавил поля title и group для фильтрации)
+    const [notifications, setNotifications] = useState([
+        { id: 1, title: 'Нове завдання', text: 'Текст або опис повідомлення...', read: false, time: '10:30', date: '2026-04-16' },
+        { id: 2, title: 'Дедлайн завдання', text: 'Текст або опис повідомлення...', read: true, time: '15:00', date: '2026-04-18' },
+        { id: 3, title: 'Нова оцінка', text: 'Ви отримали 5 за тест з математики.', read: false, time: '09:00', date: '2026-04-19' },
+        { id: 4, title: 'Нова оцінка 2', text: 'Ви отримали 5 за тест з математики.', read: false, time: '09:00', date: '2026-05-01' },
+        { id: 5, title: 'Нова оцінка 3', text: 'Ви отримали 5 за тест з математики.', read: false, time: '12:00', date: '2026-04-28' },
+        { id: 6, title: 'Нова оцінка 4', text: 'Ви отримали 5 за тест з математики.', read: false, time: '10:00', date: '2026-04-30' },
+    ]);
+
+    // считаем новые уведомления для отображения на иконке
+    const newNotificationsCount = notifications.filter(n => !n.read).length;
+
+    // Логика фильтрации
+    const filteredNotifications = notifications.filter(n => {
+        if (statusFilter === 'unread' && n.read) return false;
+        if (statusFilter === 'read' && !n.read) return false;
+        
+        // Оставляем только те сповещения, дата которых совпадает с выбранной
+        if (selectedDate && n.date !== selectedDate) return false;
+        
+        return true;
+    });
+
+    // Функції модалки (відкриття/закриття)
+    const handleOpenNotif = () => setIsNotifModalOpen(true);
+    const handleCloseNotif = () => setIsNotifModalOpen(false);
+
+    // Функции календаря
+    const handleOpenCalendar = (event) => setCalendarAnchorEl(event.currentTarget);
+    const handleCloseCalendar = () => setCalendarAnchorEl(null);
+    const handleClearDate = () => setSelectedDate(null);
+
+    // Стейт для выпадающего меню пользователя
+    const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+
+    // Функции открытия/закрытия меню профиля
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleLogout = () => {
+        router.post(route('logout'));
+    };
+
+    // Берем первую букву имени для Аватара
+    const userInitial = auth.user.full_name ? auth.user.full_name.charAt(0).toUpperCase() : 'U';
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <nav className="border-b border-gray-100 bg-white">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
-                        <div className="flex">
-                            <div className="flex shrink-0 items-center">
-                                <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800" />
-                                </Link>
-                            </div>
+        <Box sx={{ display: 'flex'}}>
+            <Box>
+                <CssBaseline /> {/* Скидає стандартні відступи браузера */}
 
-                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink
-                                    href={route('dashboard')}
-                                    active={route().current('dashboard')}
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
-
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
-                            <div className="relative ms-3">
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <span className="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {user.name}
-
-                                                <svg
-                                                    className="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </Dropdown.Trigger>
-
-                                    <Dropdown.Content>
-                                        <Dropdown.Link
-                                            href={route('profile.edit')}
-                                        >
-                                            Profile
-                                        </Dropdown.Link>
-                                        <Dropdown.Link
-                                            href={route('logout')}
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div className="-me-2 flex items-center sm:hidden">
-                            <button
-                                onClick={() =>
-                                    setShowingNavigationDropdown(
-                                        (previousState) => !previousState,
-                                    )
-                                }
-                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                            >
-                                <svg
-                                    className="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        className={
-                                            !showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        className={
-                                            showingNavigationDropdown
-                                                ? 'inline-flex'
-                                                : 'hidden'
-                                        }
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    className={
-                        (showingNavigationDropdown ? 'block' : 'hidden') +
-                        ' sm:hidden'
-                    }
+                {/* HEADER */}
+                <AppBar
+                    position="fixed" 
+                    color="primary"
+                    sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }} // Щоб шапка була поверх бокового меню
                 >
-                    <div className="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            href={route('dashboard')}
-                            active={route().current('dashboard')}
+                    <Toolbar>
+                        {/* открітие бокового окна */}
+                        <IconButton
+                            size="large"
+                            edge="start"
+                            color="inherit"
+                            aria-label="menu"
+                            sx={{ mr: 2 }}
                         >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
-
-                    <div className="border-t border-gray-200 pb-1 pt-4">
-                        <div className="px-4">
-                            <div className="text-base font-medium text-gray-800">
-                                {user.name}
-                            </div>
-                            <div className="text-sm font-medium text-gray-500">
-                                {user.email}
-                            </div>
-                        </div>
-
-                        <div className="mt-3 space-y-1">
-                            <ResponsiveNavLink href={route('profile.edit')}>
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                method="post"
-                                href={route('logout')}
-                                as="button"
+                            <MenuIcon />
+                        </IconButton>
+                        
+                        {/* SITE NAME */}
+                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                            Edutive
+                        </Typography>  
+                        
+                        {/* УВЕДОМЛЕНИЯ и АВАТАРКА */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', textAlign: 'center', color: '#475c4b' }}>
+                            {/* УВЕДОМЛЕНИЯ  */}
+                        <IconButton size="large" color="inherit" onClick={handleOpenNotif}>
+                                <Badge badgeContent={newNotificationsCount} color="error">
+                                    <NotificationsIcon />
+                                </Badge>
+                            </IconButton>
+                            {/* МОДАЛЬНОЕ ОКНО (DIALOG) */}
+                            <Dialog 
+                                open={isNotifModalOpen} 
+                                onClose={handleCloseNotif} 
+                                maxWidth="sm" // Ширина окна (sm = ~600px)
+                                fullWidth
+                                PaperProps={{ sx: { borderRadius: 3 } }} // Скругляем углы самой модалки
                             >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+                                {/* ШАПКА МОДАЛКИ (С кнопкой Х) */}
+                                <DialogTitle sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', pb: 1 }}>
+                                    <Typography variant="h5" fontWeight="bold">
+                                        Сповіщення
+                                    </Typography>
+                                    <IconButton 
+                                        onClick={handleCloseNotif} 
+                                        sx={{ position: 'absolute', right: 12, top: 12 }}
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                </DialogTitle>
 
-            {header && (
-                <header className="bg-white shadow">
-                    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        {header}
-                    </div>
-                </header>
-            )}
+                                {/* КОНТЕНТ (Фильтры и список) */}
+                                <DialogContent dividers sx={{ p: 3, height: 600 }}>
+                                    
+                                    {/* ПАНЕЛЬ ФИЛЬТРОВ */}
+                                    <Box sx={{ mb: 3 }}>
+                                        {/* Первая строка: Статусы + Иконка календаря */}
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <Chip 
+                                                    label="Всі" 
+                                                    color={statusFilter === 'all' ? 'primary' : 'default'} 
+                                                    onClick={() => setStatusFilter('all')} 
+                                                />
+                                                <Chip 
+                                                    label="Непрочитані" 
+                                                    color={statusFilter === 'unread' ? 'primary' : 'default'} 
+                                                    onClick={() => setStatusFilter('unread')} 
+                                                />
+                                                <Chip 
+                                                    label="Прочитані" 
+                                                    color={statusFilter === 'read' ? 'primary' : 'default'} 
+                                                    onClick={() => setStatusFilter('read')} 
+                                                />
+                                            </Box>
 
-            <main>{children}</main>
-        </div>
+                                            <Box>
+                                                {/* Иконка календаря */}
+                                                <IconButton 
+                                                    onClick={handleOpenCalendar} 
+                                                    color={selectedDate ? "secondary" : "primary"} 
+                                                    sx={{ ml: 1 }}
+                                                >
+                                                    <CalendarMonthIcon />
+                                                </IconButton>
+
+                                                {/* Скрытый системный инпут даты */}
+                                                {/* <input
+                                                    type="date"
+                                                    ref={dateInputRef}
+                                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                                    value={selectedDate}
+                                                    style={{ 
+                                                        position: 'absolute', 
+                                                        width: 0, 
+                                                        height: 0, 
+                                                        opacity: 0, 
+                                                        border: 'none' 
+                                                    }}
+                                                /> */}
+                                            </Box>
+                                        </Box>
+                                        
+                                        {/* Вторая строка: Выбранные фильтры (Появляется только если дата выбрана) */}
+                                        {selectedDate && (
+                                            <Box sx={{ display: 'flex', mt: 2 }}>
+                                                <Chip 
+                                                    label={`${selectedDate.format('DD.MM.YY')}`} 
+                                                    variant="outlined" 
+                                                    color="secondary" 
+                                                    size="small" 
+                                                    onDelete={handleClearDate} // Крестик, который сбросит фильтр
+                                                />
+                                            </Box>
+                                        )}
+                                    </Box>
+
+                                    {/* СПЛИВАЮЧЕ ВІКНО З MUI КАЛЕНДАРЕМ */}
+                                    <Popover
+                                        open={isCalendarOpen}
+                                        anchorEl={calendarAnchorEl}
+                                        onClose={handleCloseCalendar}
+                                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                                        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                                    >
+                                        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="uk">
+                                            <StaticDatePicker
+                                                displayStaticWrapperAs="desktop"
+                                                value={selectedDate}
+                                                onChange={(newValue) => {
+                                                    setSelectedDate(newValue);
+                                                    handleCloseCalendar(); // Календар сховається одразу після вибору дати
+                                                }}
+                                                slotProps={{
+                                                    actionBar: {
+                                                        actions: ['today'], // Кнопка "Сьогодні"
+                                                        sx: { '& .MuiButton-root':{ color: 'secondary.main'}}
+                                                    }
+                                                }}
+                                            />
+                                        </LocalizationProvider>
+                                    </Popover>
+
+                                    {/* СПИСОК КАРТОЧЕК УВЕДОМЛЕНИЙ */}
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        {filteredNotifications.length === 0 ? (
+                                            <Typography textAlign="center" color="text.secondary" sx={{ mt: 2 }}>
+                                                За обраними фільтрами сповіщень немає.
+                                            </Typography>
+                                        ) : (
+                                            filteredNotifications.map((notif) => (
+                                                <Box 
+                                                    key={notif.id} 
+                                                    sx={{ 
+                                                        p: 2, 
+                                                        bgcolor: notif.read ? '#f4f4f4' : '#ffff',
+                                                        borderRadius: 2,    // Скругленные углы карточки
+                                                        border: notif.read ? '1px solid #e0e0e0' : '1px solid #8a2db1', // Рамка
+                                                    }}
+                                                >
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                        <Typography variant="subtitle1" fontWeight="bold">
+                                                            {notif.title}
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            {dayjs(notif.date).format('DD.MM')} {notif.time}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {notif.text}
+                                                    </Typography>
+                                                </Box>
+                                            ))
+                                        )}
+                                    </Box>
+
+                                </DialogContent>
+                            </Dialog>
+
+
+                            <IconButton
+                                onClick={handleClick}
+                                size="small"
+                                sx={{ ml: 1 }}
+                                aria-controls={open ? 'account-menu' : undefined}
+                                aria-haspopup="true"
+                                aria-expanded={open ? 'true' : undefined}
+                            >
+                                {/* Аватарка с первой буквой имени */}
+                                <Avatar sx={{ width: 38, height: 38, bgcolor: '#c5f9cf', color: '#475c4b', fontWeight: 700 }}>
+                                    {userInitial}
+                                </Avatar>
+                            </IconButton>
+                        </Box>
+                        <Menu
+                            anchorEl={anchorEl}
+                            id="account-menu"
+                            open={open}
+                            onClose={handleClose}
+                            onClick={handleClose}
+                            slotProps={{
+                                paper: {
+                                    elevation: 0,
+                                    sx: {
+                                        overflow: 'visible',
+                                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                                        mt: 1.5,
+                                        '& .MuiAvatar-root': {
+                                            width: 32,
+                                            height: 32,
+                                            ml: -0.5,
+                                            mr: 1,
+                                        },
+                                        '&::before': {
+                                            content: '""',
+                                            display: 'block',
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: 14,
+                                            width: 10,
+                                            height: 10,
+                                            bgcolor: 'background.paper',
+                                            transform: 'translateY(-50%) rotate(45deg)',
+                                            zIndex: 0,
+                                        },
+                                    },
+                                },
+                            }}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                        >
+                            <MenuItem onClick={handleClose}>
+                                <Avatar /> Мій профіль
+                            </MenuItem>
+                            <Divider />
+                            <MenuItem onClick={handleLogout} sx={{ color: 'error.main'}}>
+                                <ListItemIcon>
+                                    <Logout fontSize="small" color="error" />
+                                </ListItemIcon>
+                                Вийти
+                            </MenuItem>
+                        </Menu>
+                        
+                    </Toolbar>
+                </AppBar>
+            </Box>
+
+            {/* 3. ОСНОВНИЙ КОНТЕНТ ({children}) */}
+            <Box
+                component="main"
+                sx={{ flexGrow: 1, p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}
+            >
+                <Toolbar /> {/* Пустий блок, щоб контент не ховався під шапкою */}
+                {children} 
+            </Box>
+
+        </Box>
     );
 }

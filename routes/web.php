@@ -9,7 +9,7 @@ use Inertia\Inertia;
 Route::get('/', function () {
 
     if (Auth::check()) {
-        return Inertia::render('Dashboard'); // ! изменить на MAIN
+        return Inertia::render('ProjectList'); // ! изменить на MAIN
     }
 
     return Inertia::render('Auth', [

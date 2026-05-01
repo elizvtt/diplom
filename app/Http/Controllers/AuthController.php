@@ -23,13 +23,18 @@ class AuthController extends Controller
             'role' => ['required', 'in:student,teacher'], // Проверяем, что роль только из разрешенного списка
         ], [
             'email.unique' => 'Користувач з такою поштою вже існує.', // Кастомные сообщения об ошибках
+            'full_name.max' => 'Задовгі ім`я та прізвище',
+            'password.min' => 'Пароль має містити не менше 6 символів.',
         ]);
+
+        debug($validated);
+        // debug($user, $array, 'Какое-то тестовое сообщение');
 
         // Создание пользователя в БД
         $user = User::create([
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => $validated['password'],
             'role' => $validated['role'], 
             'is_active' => 1,
         ]);

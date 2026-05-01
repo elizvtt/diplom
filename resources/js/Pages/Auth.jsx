@@ -19,7 +19,7 @@ export default function Auth() {
     const [isLogin, setIsLogin] = useState(true); // состояние для переключения вход/регистрация
     const [passwordTooltipOpen, setPasswordTooltipOpen] = useState(false);
     const [frontendErrors, setfrontendErrors] = useState({}); // состояние для хранения ошибок валидации
-    const { data, setData, post, processing, errors: backendErrors, clearErrors, reset } = useForm({
+    const { data, setData, post, processing, errors: backendErrors, clearErrors, reset, transform } = useForm({
         name: '', 
         surname: '', 
         email: '', 
@@ -120,12 +120,12 @@ export default function Auth() {
         if (isLogin) {
             post('/login'); // Если это вход
         } else {
-            post('/register', {
-                transform: (data) => ({
-                    ...data,
-                    full_name: `${data.name} ${data.surname}`.trim(),
-                }),
-            });
+            transform((data) => ({
+                ...data,
+                full_name: `${data.name} ${data.surname}`.trim(),
+            }));
+
+            post('/register'); // если это регистрация
         }
 
     };

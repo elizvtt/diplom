@@ -28,6 +28,8 @@
         "@mui/icons-material": "^9.0.0",
         "@mui/material": "^9.0.0",
         "@mui/styled-engine-sc": "^9.0.0",
+        "@mui/x-date-pickers": "^9.0.4",
+        "dayjs": "^1.11.20",
         "styled-components": "^6.4.1"
     }
 }
