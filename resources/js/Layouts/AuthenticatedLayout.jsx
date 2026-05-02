@@ -24,6 +24,11 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // Иконк
 
 export default function AuthenticatedLayout({ header, children }) {
     const auth = usePage().props.auth; // Получаем данные юзера из Inertia
+    // console.log('auth: ', auth.user.avatar_path);
+
+    // Стейт для прев'ю аватарки
+    const [avatarPreview, setAvatarPreview] = useState(auth.user.avatar_path ? `/storage/${auth.user.avatar_path}` : null);
+    
 
     // Стейт для модального окна (открыто/закрыто)
     const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
@@ -74,26 +79,20 @@ export default function AuthenticatedLayout({ header, children }) {
     const open = Boolean(anchorEl);
 
     // Функции открытия/закрытия меню профиля
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
+    const handleClick = (event) => setAnchorEl(event.currentTarget);
+    const handleClose = () => setAnchorEl(null);
 
-    const handleLogout = () => {
-        router.post(route('logout'));
-    };
+    // віход из аккаунта
+    const handleLogout = () => router.post(route('logout'));
 
-    // Берем первую букву имени для Аватара
-    const userInitial = auth.user.full_name ? auth.user.full_name.charAt(0).toUpperCase() : 'U';
 
     return (
         <Box sx={{ display: 'flex'}}>
-            <Box>
-                <CssBaseline /> {/* Скидає стандартні відступи браузера */}
+            <CssBaseline /> {/* Скидає стандартні відступи браузера */}
 
-                {/* HEADER */}
+            {/* Рендеримо шапку ТІЛЬКИ якщо header не дорівнює null */}
+            {header !== null && (
+                // HEADER
                 <AppBar
                     position="fixed" 
                     color="primary"
@@ -119,11 +118,27 @@ export default function AuthenticatedLayout({ header, children }) {
                         {/* УВЕДОМЛЕНИЯ и АВАТАРКА */}
                         <Box sx={{ display: 'flex', alignItems: 'center', textAlign: 'center', color: '#475c4b' }}>
                             {/* УВЕДОМЛЕНИЯ  */}
-                        <IconButton size="large" color="inherit" onClick={handleOpenNotif}>
+                            <IconButton size="large" color="inherit" onClick={handleOpenNotif}>
                                 <Badge badgeContent={newNotificationsCount} color="error">
                                     <NotificationsIcon />
                                 </Badge>
                             </IconButton>
+                            
+                            {/* АВАТАРКА */}
+                            <IconButton
+                                onClick={handleClick}
+                                size="small"
+                                sx={{ ml: 1 }}
+                                aria-controls={open ? 'account-menu' : undefined}
+                                aria-haspopup="true"
+                                aria-expanded={open ? 'true' : undefined}
+                            >
+                                {/* Аватарка с первой буквой имени */}
+                                <Avatar src={avatarPreview} sx={{ width: 38, height: 38, bgcolor: '#c5f9cf', color: '#475c4b', fontWeight: 700 }}>
+                                    {!avatarPreview && auth.user.full_name ? auth.user.full_name.charAt(0).toUpperCase() : ''}
+                                </Avatar>
+                            </IconButton>
+
                             {/* МОДАЛЬНОЕ ОКНО (DIALOG) */}
                             <Dialog 
                                 open={isNotifModalOpen} 
@@ -132,7 +147,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 fullWidth
                                 PaperProps={{ sx: { borderRadius: 3 } }} // Скругляем углы самой модалки
                             >
-                                {/* ШАПКА МОДАЛКИ (С кнопкой Х) */}
+                                {/* ШАПКА МОДАЛКИ*/}
                                 <DialogTitle sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', pb: 1 }}>
                                     <Typography variant="h5" fontWeight="bold">
                                         Сповіщення
@@ -179,25 +194,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 >
                                                     <CalendarMonthIcon />
                                                 </IconButton>
-
-                                                {/* Скрытый системный инпут даты */}
-                                                {/* <input
-                                                    type="date"
-                                                    ref={dateInputRef}
-                                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                                    value={selectedDate}
-                                                    style={{ 
-                                                        position: 'absolute', 
-                                                        width: 0, 
-                                                        height: 0, 
-                                                        opacity: 0, 
-                                                        border: 'none' 
-                                                    }}
-                                                /> */}
                                             </Box>
                                         </Box>
                                         
-                                        {/* Вторая строка: Выбранные фильтры (Появляется только если дата выбрана) */}
+                                        {/* Выбранные фильтры (Появляется только если дата выбрана) */}
                                         {selectedDate && (
                                             <Box sx={{ display: 'flex', mt: 2 }}>
                                                 <Chip 
@@ -273,22 +273,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </DialogContent>
                             </Dialog>
 
-
-                            <IconButton
-                                onClick={handleClick}
-                                size="small"
-                                sx={{ ml: 1 }}
-                                aria-controls={open ? 'account-menu' : undefined}
-                                aria-haspopup="true"
-                                aria-expanded={open ? 'true' : undefined}
-                            >
-                                {/* Аватарка с первой буквой имени */}
-                                <Avatar sx={{ width: 38, height: 38, bgcolor: '#c5f9cf', color: '#475c4b', fontWeight: 700 }}>
-                                    {userInitial}
-                                </Avatar>
-                            </IconButton>
                         </Box>
-                        <Menu
+
+                        {/* меню при нажатии на аватарку */}
+                        <Menu 
                             anchorEl={anchorEl}
                             id="account-menu"
                             open={open}
@@ -325,7 +313,11 @@ export default function AuthenticatedLayout({ header, children }) {
                             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                         >
-                            <MenuItem onClick={handleClose}>
+                            <MenuItem
+                                component={Link}
+                                href='/profile'
+                                onClick={handleClose}
+                            >
                                 <Avatar /> Мій профіль
                             </MenuItem>
                             <Divider />
@@ -339,14 +331,14 @@ export default function AuthenticatedLayout({ header, children }) {
                         
                     </Toolbar>
                 </AppBar>
-            </Box>
+            )}
 
-            {/* 3. ОСНОВНИЙ КОНТЕНТ ({children}) */}
+            {/* 3. ОСНОВНИЙ КОНТЕНТ */}
             <Box
                 component="main"
                 sx={{ flexGrow: 1, p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}
             >
-                <Toolbar /> {/* Пустий блок, щоб контент не ховався під шапкою */}
+                {header !== null && <Toolbar />} {/* Пустий блок, щоб контент не ховався під шапкою */}
                 {children} 
             </Box>
 

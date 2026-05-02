@@ -17,7 +17,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             
-            // Используем значения из Enum
             $table->enum('event', array_column(NotificationEvent::cases(), 'value'));
             $table->enum('channel', array_column(NotificationChannel::cases(), 'value'));
             
@@ -26,8 +25,7 @@ return new class extends Migration
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
 
-            // Защита: У одного пользователя может быть только одна 
-            // настройка для конкретного события и канала!
+            // У одного пользователя может быть только одна 
             $table->unique(['user_id', 'event', 'channel']);
 
         });

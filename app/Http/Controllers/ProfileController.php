@@ -2,62 +2,83 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
-    // /**
-    //  * Display the user's profile form.
-    //  */
-    // public function edit(Request $request): Response
-    // {
-    //     return Inertia::render('Profile/Edit', [
-    //         'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-    //         'status' => session('status'),
-    //     ]);
-    // }
 
-    // /**
-    //  * Update the user's profile information.
-    //  */
-    // public function update(ProfileUpdateRequest $request): RedirectResponse
-    // {
-    //     $request->user()->fill($request->validated());
+    // Показує сторінку
+    public function edit(Request $request)
+    {
+        $user = $request->user();
+        
+        // Завантажуємо детальні налаштування користувача
+        // $notificationSettings = $user->notificationSettings()->get(); // Припускаємо, що у вас є відношення hasMany
+        
+        // return Inertia::render('Profile', [
+            // 'notificationSettingsList' => $notificationSettings
+        // ]);
+        return Inertia::render('Profile');
+    }
 
-    //     if ($request->user()->isDirty('email')) {
-    //         $request->user()->email_verified_at = null;
-    //     }
 
-    //     $request->user()->save();
+    // Зберігає зміни
+    public function update(Request $request)
+    {
+        $user = $request->user();
 
-    //     return Redirect::route('profile.edit');
-    // }
+        // валидация
+        $validated = $request->validate([
+            'full_name' => 'required|string|max:255',
+            'email_notification' => 'boolean',
+            'avatar' => 'nullable|image|max:2048',
+            'delete_avatar' => 'nullable|boolean',
+            'settings' => 'array',
+            'settings.*.id' => 'required|exists:notification_settings,id',
+            'settings.*.is_enabled' => 'boolean',
+        ]);
 
-    // /**
-    //  * Delete the user's account.
-    //  */
-    // public function destroy(Request $request): RedirectResponse
-    // {
-    //     $request->validate([
-    //         'password' => ['required', 'current_password'],
-    //     ]);
 
-    //     $user = $request->user();
+        if ($request->input('delete_avatar') == true) { // Видалення аватарки
 
-    //     Auth::logout();
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+                $user->avatar_path = null;
+            }
+        } else if ($request->hasFile('avatar')) { // Оновлення аватарки
+            // Видаляємо стару аватарку, якщо є
+            if ($user->avatar_path) Storage::disk('public')->delete($user->avatar_path);
 
-    //     $user->delete();
+            $file = $request->file('avatar'); // Отримуємо сам файл
+            $binaryId = decbin($user->id); // Перетворюємо ID користувача в бінарний код
+            $extension = $file->getClientOriginalExtension(); // Отримуємо оригінальне розширення файлу (jpg, png тощо)
+            
+            $fileName = 'img_user_' . $binaryId . '.' . $extension; // Формуємо нове ім'я файлу
 
-    //     $request->session()->invalidate();
-    //     $request->session()->regenerateToken();
+            // Зберігаємо нову аватарку
+            $path = $file->storeAs('avatars', $fileName, 'public');
+            $user->avatar_path = $path;
+        }
 
-    //     return Redirect::to('/');
-    // }
+        debug($validated);
+
+        // Оновлення таблиці users
+        $user->full_name = $validated['full_name'];
+        $user->email_notification = $validated['email_notification'] ? 1 : 0;
+        $user->save();
+
+        // Оновлення таблиці notification_settings (якщо прийшли налаштування)
+        if (isset($validated['settings'])) {
+            foreach ($validated['settings'] as $settingData) {
+                $user->notificationSettings()->where('id', $settingData['id'])->update([
+                    'is_enabled' => $settingData['is_enabled'] ? 1 : 0
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Профіль оновлено!');
+    }
+
 }

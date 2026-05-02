@@ -11,8 +11,5 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-
-    // Route::put('password', [::class, 'update'])->name('password.update');
-
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 });
