@@ -1,13 +1,15 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import React, { useState, useMemo, useEffect } from 'react';
 
 import {
+    Alert, Snackbar,
     Box, Button, Card, CardActionArea, CardContent, Divider,
-    Grid, Link, LinearProgress, Menu, MenuItem, Paper,
+    Grid, Link, LinearProgress, Menu, MenuItem,
     Typography, Tooltip, ToggleButton, ToggleButtonGroup, Chip, 
+    Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+    IconButton, Switch, FormControlLabel
 } from '@mui/material';
-
 
 import AddIcon from '@mui/icons-material/Add';
 import ViewListIcon from '@mui/icons-material/ViewList';
@@ -16,6 +18,9 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import CloseIcon from '@mui/icons-material/Close';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+
 
 //сохраняем данные в локал сторедж
 function useLocalStorage(key, initialValue) {
@@ -44,13 +49,12 @@ function useLocalStorage(key, initialValue) {
     return [state, setState];
 }
 
-
-// ЗАГЛУШКА
+// ЗАГЛУШКИ
 const mockProjects = [
     {
         id: 1,
         title: 'Оновлення корпоративного сайту',
-        short_description: 'Повний редизайн та перехід на новий стек технологій.',
+        description: 'Повний редизайн та перехід на новий стек технологій.',
         is_active: 1,
         is_owner: true,
         tasks_total: 12,
@@ -59,7 +63,7 @@ const mockProjects = [
     {
         id: 2,
         title: 'Мобільний додаток для клієнтів',
-        short_description: 'Розробка iOS та Android додатків.',
+        description: 'Розробка iOS та Android додатків.',
         is_active: 1,
         is_owner: false,
         tasks_total: 5,
@@ -68,7 +72,7 @@ const mockProjects = [
     {
         id: 3,
         title: 'Внутрішня CRM система',
-        short_description: 'Інтеграція з існуючими базами даних та налаштування ролей.',
+        description: 'Інтеграція з існуючими базами даних та налаштування ролей.',
         is_active: 0,
         is_owner: true,
         tasks_total: 0,
@@ -97,7 +101,7 @@ const roleOptions = [
     { value: 'participant', label: 'Учасник' },
 ];
 
-// Стиль для пунктів меню, щоб вибраний елемент було добре видно
+// Стиль для пунктів меню
 const menuItemStyle = {
     '&.Mui-selected': {
         fontWeight: 'bold',
@@ -117,7 +121,7 @@ const ProjectProgressBar = ({ completed, total }) => {
         <Box sx={{ mt: 'auto', width: '100%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                    Виконано: {completed}/{total}
+                    Виконано: {completed || 0}/{total || 0}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" fontWeight="bold">
                     {percent}%
@@ -133,49 +137,44 @@ const ProjectProgressBar = ({ completed, total }) => {
     );
 };
 
-export default function ProjectList({ projects }) {
-    const displayProjects = projects || mockProjects;
+export default function ProjectsList({ projects }) {
     // console.log('projects: ', projects);
+    const displayProjects = projects || mockProjects;
 
-    // стейт для всех настроек
+    // Форма Inertia
+    const { data, setData, post, processing, errors, reset } = useForm({
+        title: '',
+        description: '',
+        generate_ai_tasks: false,
+    });
+
+    // Стейт для всех настроек
     const [settings, setSettings] = useLocalStorage('project_list', {
         view: 'module',
         sortBy: 'newest',
         filterStatus: 'all',
         filterRole: 'all'
     });
+    const { view, sortBy, filterStatus, filterRole } = settings; // деструктуризация
 
-    // деструктуризация
-    const { view, sortBy, filterStatus, filterRole } = settings;
-
-    // const [view, setView] = useState('module');
-    const setView = (newView) => setSettings(prev => ({ ...prev, view: newView }));
-    const handleChange = (event, nextView) => {
-        if (nextView !== null) setView(nextView);
-    };
-
+    // модальное окно для создания проєкта
+    const [isModalOpen, setIsModalOpen] = useState(false);
     // Стейти для відкриття випадаючих меню
     const [filterMenuAnchor, setFilterMenuAnchor] = useState(null);
     const [sortMenuAnchor, setSortMenuAnchor] = useState(null);
+    const [warnedAboutLength, setWarnedAboutLength] = useState(false);
 
-    // Стейти для збереження вибраних параметрів
-    const setSortBy = (newSort) => setSettings(prev => ({ ...prev, sortBy: newSort }));
-    const setFilterStatus = (newStatus) => setSettings(prev => ({ ...prev, filterStatus: newStatus }));
-    const setFilterRole = (newRole) => setSettings(prev => ({ ...prev, filterRole: newRole }));
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'warning',
+    });
 
-    // Функція очищення всіх фільтрів
-    const handleClearAll = () => {
-        setSettings(prev => ({
-            ...prev,
-            sortBy: 'newest',
-            filterStatus: 'all',
-            filterRole: 'all'
-        }));
-    };
-
-    // Обробляємо список проєктів: спочатку фільтруємо, потім сортуємо
+    // Фильтрация и сортировка проэктов
     const processedProjects = useMemo(() => {
         let result = [...displayProjects];
+        // console.log('processedProjects: ', result);
+        // console.log('filterStatus: ', filterStatus);
 
         // Фильтрация по статусу
         if (filterStatus === 'active') result = result.filter(p => p.is_active === 1);
@@ -212,6 +211,87 @@ export default function ProjectList({ projects }) {
 
         return result;
     }, [displayProjects, sortBy, filterStatus, filterRole]);
+    
+    // ^ Handlers
+    // Обробники фільтрів та відображення
+    const setView = (newView) => setSettings(prev => ({ ...prev, view: newView }));
+    const handleChange = (event, nextView) => {
+        if (nextView !== null) setView(nextView);
+    };
+    // Стейти для збереження вибраних параметрів
+    const setSortBy = (newSort) => setSettings(prev => ({ ...prev, sortBy: newSort }));
+    const setFilterStatus = (newStatus) => setSettings(prev => ({ ...prev, filterStatus: newStatus }));
+    const setFilterRole = (newRole) => setSettings(prev => ({ ...prev, filterRole: newRole }));
+    // Функція очищення всіх фільтрів
+    const handleClearAll = () => {
+        setSettings(prev => ({
+            ...prev,
+            sortBy: 'newest',
+            filterStatus: 'all',
+            filterRole: 'all'
+        }));
+    };
+
+    // обработчики ui    
+    const handleOpenModal = () => setIsModalOpen(true);
+    const handleCloseModal = (event, reason) => {
+        if (reason && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return;
+        setIsModalOpen(false);
+        reset(); // Очищуємо форму, якщо юзер закрив модалку
+    };
+    const handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') return;
+        setSnackbar(prev => ({ ...prev, open: false }));
+    };
+
+    // Обробник відправки форми
+    const submitProject = (e) => {
+        e.preventDefault();
+        
+        const MIN_DESC_LENGTH = 20;
+
+        // проверка для ии
+        if (data.generate_ai_tasks && data.description.trim().length < MIN_DESC_LENGTH && !warnedAboutLength) {
+            setSnackbar({
+                open: true,
+                message: 'Для якісної генерації завдань (ШІ) рекомендуємо додати детальніший опис проєкту',
+                severity: 'warning'
+            });
+            setWarnedAboutLength(true);
+            return; 
+        }
+
+        // ТИМЧАСОВА ЗАГЛУШКА
+        // console.log('Дані нового проєкту:', data);
+        // handleCloseModal(); 
+        // setSnackbar({
+        //     open: true,
+        //     message: 'Проєкт успішно створено!',
+        //     severity: 'success'
+        // });
+        // setWarnedAboutLength(false); // Скидаємо попередження для наступного разу
+        
+        post('/add/project', {
+            onSuccess: (page) => {
+                handleCloseModal();
+                console.log('page: ', page);
+                console.log('page.props: ', page.props);
+                console.log('page.props.flash: ', page.props.flash);
+
+                // Дістаємо повідомлення, яке прийшло з контролера
+                const serverMessage = page.props.flash?.success || 'Успіх!';
+
+                setSnackbar({
+                    open: true,
+                    message: serverMessage,
+                    severity: 'success'
+                });
+                setWarnedAboutLength(false);
+            },
+        });
+        
+    };
+
 
     return (
         <AuthenticatedLayout
@@ -234,6 +314,7 @@ export default function ProjectList({ projects }) {
                         variant='contained'
                         title='Створити новий проєкт'
                         startIcon={<AddIcon />}
+                        onClick={handleOpenModal}
                     >
                         Створити
                     </Button>
@@ -378,7 +459,7 @@ export default function ProjectList({ projects }) {
                     // & СЕТКА
                     <Grid container spacing={3}>
                         {processedProjects.map((project) => (
-                            <Grid item size={{ xs: 2, sm: 4, md: 4 }}>
+                            <Grid item key={project.id} size={{ xs: 2, sm: 4, md: 4 }}>
                                 <Card
                                     sx={{ 
                                         height: '100%', 
@@ -394,7 +475,7 @@ export default function ProjectList({ projects }) {
                                     {/* CardActionArea делает карточку кликабельной ссылкой */}
                                     <CardActionArea 
                                         component={Link}
-                                        href="#"
+                                        href={`/projects/${project.uuid}`}
                                         // href={route('projects.show', project.id)} // ссылка на проект
                                         sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', height: '100%' }}
                                     >
@@ -415,7 +496,7 @@ export default function ProjectList({ projects }) {
                                                     {project.title}
                                                 </Typography>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    {project.short_description || "Опис відсутній"}
+                                                    {project.description?.html || "Опис відсутній"}
                                                 </Typography>
                                             </Box>
 
@@ -462,7 +543,7 @@ export default function ProjectList({ projects }) {
                             >
                                 <CardActionArea 
                                     component={Link} 
-                                    href="#"
+                                    href={`/projects/${project.uuid}`}
                                     // вміст горизонтальним на ПК, і вертикальним на мобільних
                                     sx={{ 
                                         display: 'flex', 
@@ -486,7 +567,7 @@ export default function ProjectList({ projects }) {
                                             />
                                         </Box>
                                         <Typography variant="body2" color="text.secondary">
-                                            {project.short_description || "Опис відсутній"}
+                                            {project.description?.html || "Опис відсутній"}
                                         </Typography>
                                     </Box>
 
@@ -517,6 +598,133 @@ export default function ProjectList({ projects }) {
 
                 )}
             </Box>
+
+            {/* МОДАЛЬНЕ ВІКНО СТВОРЕННЯ ПРОЄКТУ */}
+            <Dialog 
+                open={isModalOpen} 
+                onClose={handleCloseModal} 
+                maxWidth="sm" 
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight="bold">Створення нового проєкту</Typography>
+                    <IconButton onClick={handleCloseModal} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                
+                <form onSubmit={submitProject}>
+                    <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
+                        
+                        <TextField
+                            label="Назва"
+                            placeholder="Введіть назву проєкту"
+                            variant="outlined"
+                            color='secondary'
+                            fullWidth
+                            required
+                            value={data.title}
+                            onChange={(e) => setData('title', e.target.value)}
+                            error={!!errors.title}
+                            helperText={errors.title}
+                        />
+
+                        {/* Поки що тут простий Multiline TextField. Пізніше сюди вставимо Tiptap */}
+                        <TextField
+                            label="Опис"
+                            placeholder="Опишіть основні цілі та завдання проєкту"
+                            variant="outlined"
+                            color='secondary'
+                            fullWidth
+                            multiline
+                            minRows={4}
+                            value={data.description}
+                            onChange={(e) => {
+                                setData('description', e.target.value);
+                                setWarnedAboutLength(false);
+                            }}
+                            error={!!errors.description}
+                            helperText={errors.description}
+                        />
+
+                        {/* БЛОК ГЕНЕРАЦІЇ ШІ */}
+                        <Box 
+                            sx={{ 
+                                p: 2, 
+                                bgcolor: data.generate_ai_tasks ? '#DDDBEF' : 'background.default',
+                                borderRadius: 2, 
+                                border: '1px dashed', 
+                                // borderColor: data.generate_ai_tasks ? '#6600cc' : 'divider',
+                                borderColor: '#6600cc',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            <FormControlLabel
+                                control={
+                                    <Switch 
+                                        checked={data.generate_ai_tasks} 
+                                        onChange={(e) => setData('generate_ai_tasks', e.target.checked)}
+                                        color="default"
+                                    />
+                                }
+                                label={
+                                    <Typography fontWeight="bold" sx={{ display: 'flex', gap: 1, alignItems: 'center'}}>
+                                        <AutoAwesomeIcon fontSize="small" sx={{ color: '#6600cc'}} />
+                                        Згенерувати структуру завдань (ШІ)
+                                    </Typography>
+                                }
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 5, mt: -0.5 }}>
+                                Система проаналізує назву та опис, щоб автоматично створити базовий план завдань для цього проєкту.
+                            </Typography>
+                        </Box>
+                    </DialogContent>
+                    
+                    <DialogActions sx={{ p: 2, px: 3 }}>
+                        <Button 
+                            color='error'
+                            variant="outlined"
+                            onClick={handleCloseModal}
+                        >
+                            Скасувати
+                        </Button>
+
+                        <Tooltip 
+                            title={!data.title.trim() ? 'Спочатку введіть назву проєкту' : ''} 
+                            placement="bottom"
+                            arrow
+                        >
+                            <span>
+                                <Button 
+                                    type="submit" 
+                                    variant="contained" 
+                                    sx={{ background: '#475c4b', color: '#fff', '&:hover': { background: '#354638' } }}
+                                    disabled={processing || !data.title.trim()}
+                                >
+                                    {processing ? 'Створення...' : 'Створити проєкт'}
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    </DialogActions>
+                </form>
+            </Dialog>
+            {/* Спливаюче повідомлення (Успіх або Попередження) */}
+            <Snackbar 
+                open={snackbar.open} 
+                autoHideDuration={snackbar.severity === 'warning' ? 7000 : 4000} // Попередження висить трохи довше
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }} 
+            >
+                <Alert 
+                    onClose={handleCloseSnackbar} 
+                    severity={snackbar.severity}
+                    variant="filled" 
+                    sx={{ width: '100%', borderRadius: 2 }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
 
         </AuthenticatedLayout>
     );

@@ -28,7 +28,6 @@ class AuthController extends Controller
         ]);
 
         debug($validated);
-        // debug($user, $array, 'Какое-то тестовое сообщение');
 
         // Создание пользователя в БД
         $user = User::create([

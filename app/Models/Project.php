@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Project extends Model
 {
@@ -14,6 +15,7 @@ class Project extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'uuid',
         'title',
         'description',
         'owner_id',
@@ -27,9 +29,19 @@ class Project extends Model
     protected function casts(): array
     {
         return [
-            // 'is_active' => 'boolean', // Автоматично перетворює 0/1 з бази на true/false
-        //     'password' => 'hashed',
+            'description' => 'array',
         ];
+    }
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($project) {
+            // Перевіряємо, чи немає вже uuid, і генеруємо новий
+            if (empty($project->uuid)) {
+                $project->uuid = (string) Str::uuid();
+            }
+        });
     }
 
     /**
@@ -39,5 +51,11 @@ class Project extends Model
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    // Вказуємо, що для URL використовується uuid
+    public function getRouteKeyName()
+    {
+        return 'uuid';
     }
 }
