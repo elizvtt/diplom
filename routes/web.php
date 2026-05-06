@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\TaskController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -47,6 +48,9 @@ Route::middleware('auth')->group(function () {
 
     // Додаємо маршрут для перегляду конкретного проєкту
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    
+    Route::post('/add/task', [TaskController::class, 'createTask'])->name('task.store');
+
 
     
 });

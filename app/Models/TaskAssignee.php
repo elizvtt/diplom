@@ -20,6 +20,7 @@ class TaskAssignee extends Model
         'user_id',
         'status',
         'completed_at',
+        'progress',
     ];
 
     /**
@@ -54,13 +55,13 @@ class TaskAssignee extends Model
 
         $statuses = $allAssignees->pluck('status');
 
-        // Логика 1: Если есть хотя бы один InProgress -> задача InProgress
+        // Если есть хотя бы один InProgress -> задача InProgress
         if ($statuses->contains(TaskAssigneeStatus::InProgress)) {
             $task->update(['status' => TaskStatus::InProgress]);
             return;
         }
 
-        // Логика 2: Если ВСЕ исполнители имеют статус Completed -> задача Done
+        // Если ВСЕ исполнители имеют статус Completed -> задача Done
         $isAllDone = $statuses->every(fn($status) => $status === TaskAssigneeStatus::Completed);
         
         if ($isAllDone && $statuses->isNotEmpty()) {

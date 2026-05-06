@@ -1,5 +1,5 @@
-import React, { useState } from 'react'; // 🔥 Додали useState
-import { Box, Divider, ToggleButton, ToggleButtonGroup, Typography, Collapse } from '@mui/material'; // 🔥 Додали Collapse
+import React, { useState } from 'react';
+import { Box, Divider, ToggleButton, ToggleButtonGroup, Typography, Collapse } from '@mui/material';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -12,11 +12,9 @@ import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import FormatClearIcon from '@mui/icons-material/FormatClear';
 
-// 1. Компонент панелі інструментів (без змін)
+// Компонент панелі інструментів
 const MenuBar = ({ editor }) => {
-    if (!editor) {
-        return null;
-    }
+    if (!editor) return null;
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', p: 0.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fafafa', flexWrap: 'wrap' }}>
@@ -96,8 +94,6 @@ export default function TipTapEditor({ value, onChange }) {
 
     // Обробник втрати фокусу
     const handleBlur = (event) => {
-        // Перевіряємо, чи новий елемент у фокусі (relatedTarget) 
-        // знаходиться ВСЕРЕДИНІ нашого Box (currentTarget).
         // Якщо клік був поза редактором — ховаємо меню.
         if (!event.currentTarget.contains(event.relatedTarget)) {
             setIsFocused(false);
@@ -105,14 +101,10 @@ export default function TipTapEditor({ value, onChange }) {
     };
 
     return (
-        <Box sx={{ mb: 2 }}>
-            {/* <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ display: 'block', mb: 0.5 }}>
-                Опис
-            </Typography> */}
-            
+        <Box sx={{ mb: 2 }}>            
             <Box 
-                onFocus={() => setIsFocused(true)} // 🔥 Показуємо меню при кліку всередину
-                onBlur={handleBlur}                // 🔥 Ховаємо меню при кліку назовні
+                onFocus={() => setIsFocused(true)} // Показуємо меню при кліку всередину
+                onBlur={handleBlur} // Ховаємо меню при кліку назовні
                 sx={{ 
                     border: '1px solid #c4c4c4', 
                     borderRadius: 2, 
@@ -134,12 +126,15 @@ export default function TipTapEditor({ value, onChange }) {
                     bgcolor: '#fff',
                     '& .ProseMirror': {
                         outline: 'none', 
-                        minHeight: '120px',
+                        minHeight: '100px',
                         fontSize: '0.875rem',
-                        padding: '12px 4px', // Додав трохи відступу зверху/знизу, щоб текст не прилипав
+                        padding: '15px 4px 4px 4px',
                     },
                     '& .ProseMirror ul, & .ProseMirror ol': {
                         paddingLeft: '1.5rem',
+                    },
+                    '& .ProseMirror ol': {
+                        margin: '0px',
                     },
                     '& .ProseMirror p.is-editor-empty:first-of-type::before': {
                         color: '#adb5bd',
@@ -147,6 +142,9 @@ export default function TipTapEditor({ value, onChange }) {
                         float: 'left',
                         height: 0,
                         pointerEvents: 'none',
+                    },
+                    '& .ProseMirror p': {
+                        margin: '0px 0px 2px',
                     }
                 }}>
                     <EditorContent editor={editor} />

@@ -19,14 +19,17 @@ return new class extends Migration
             $table->foreignId('parent_task_id')->nullable()->constrained('tasks');
             $table->foreignId('project_id')->constrained('projects');
             $table->string('title');
-            $table->json('description')->nullable();
+            $table->string('description')->nullable();
             
-            $table->enum('status', array_column(TaskStatus::cases(), 'value'))->default(TaskStatus::Todo->value);
-            $table->enum('priority', array_column(TaskPriority::cases(), 'value'))->default(TaskPriority::Medium->value);
+            $table->string('status')->default(TaskStatus::Backlog->value);
+            $table->string('priority')->default(TaskPriority::Medium->value);
             
-            $table->dateTime('deadline')->nullable();
+            $table->dateTime('date_start')->nullable();
+            $table->dateTime('date_end')->nullable();
+
             $table->foreignId('creator_id')->constrained('users');
             $table->tinyInteger('progress')->default(0);
+            $table->string('reminder')->nullable();
             $table->tinyInteger('is_active')->default(1);
 
             $table->dateTime('created_at')->nullable();

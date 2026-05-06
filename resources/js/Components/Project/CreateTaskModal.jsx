@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// import TipTapEditor from './TipTapEditor';
+import { useForm } from '@inertiajs/react';
 import TipTapEditor from '@/Components/Project/TipTapEditor';
 
 import {
@@ -23,36 +23,29 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-// 1. Тестові дані (список команди)
-const TEAM_MEMBERS = [
-    { id: 1, name: 'Олексій' },
-    { id: 2, name: 'Марія' },
-    { id: 3, name: 'Іван' },
-    { id: 4, name: 'Анна' },
-];
-
-export default function CreateTaskModal({ open, onClose, project }) {
+export default function CreateTaskModal({ open, onClose, project, teamMembers, statuses, priorities, reminders }) {
+    console.log('teamMembers: ', teamMembers);
     const [openStart, setOpenStart] = useState(false);
     const [openEnd, setOpenEnd] = useState(false);
-
-    // Стейт вкладок (Details = 'details', Advanced = 'advanced')
-    const [activeTab, setActiveTab] = useState('details');
-    // Стейт прогресу для слайдера
-    const [progress, setProgress] = useState(0);
     
     // Стейти для випадаючого меню кнопки створення
     const [anchorEl, setAnchorEl] = useState(null);
     const [createMode, setCreateMode] = useState('create_close'); // 'create_close' або 'create_next'
 
-    const [description, setDescription] = useState('');
+    // ДАННЫЕ ФОРМЫ
+    const { data, setData, post, processing, errors, reset, transform } = useForm({
+        title: '',
+        description: '',
+        assignees: [], 
+        date_start: null, 
+        date_end: null,
+        status: 'backlog',
+        priority: 'medium',
+        reminder: 'none',
+        progress: 0,
+    });
 
-    const handleTabChange = (event, newValue) => {
-        if (newValue !== null) setActiveTab(newValue);
-    };
-
-    const handleSplitButtonClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
+    const handleSplitButtonClick = (event) => setAnchorEl(event.currentTarget);
 
     const handleSplitMenuClose = () => setAnchorEl(null);
 
@@ -61,20 +54,34 @@ export default function CreateTaskModal({ open, onClose, project }) {
         handleSplitMenuClose();
     };
 
+    // Форматируем данные
+    transform((formData) => ({
+        ...formData,
+        project_id: project.id,
+        assignees: formData.assignees.map(u => u.id),
+        date_start: formData.date_start ? formData.date_start.format('YYYY-MM-DD HH:mm:ss') : null,
+        date_end: formData.date_end ? formData.date_end.format('YYYY-MM-DD HH:mm:ss') : null,
+        reminder: formData.reminder !== 'none' ? formData.reminder : null,
+    }));
+
     // Головна функція створення завдання
     const handleCreateTask = () => {
-        console.log("Task created!");
-        // TODO: Тут логіка відправки даних на бекенд
-        
-        if (createMode === 'create_close') {
-            onClose(); // Закриваємо модалку
-        } else {
-            // Очищаємо форму, модалка залишається відкритою
-            setProgress(0);
-            setActiveTab('details');
-            console.log("Ready for next task!");
-        }
+        console.log('data:', data);
+        post('/add/task', {
+            preserveScroll: true,
+            onSuccess: () => {
+            // закриття або продовження створення
+            if (createMode === 'create_close') {
+                onClose(); // Закриваємо модалку
+                reset();   // Очищаємо форму
+            } else {
+                reset(); // Очищаємо форму
+            }
+            },
+
+        });
     };
+
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
@@ -101,13 +108,16 @@ export default function CreateTaskModal({ open, onClose, project }) {
                         size="small" 
                         sx={{ mb: 2 }} 
                         fullWidth 
+                        value={data.title} 
+                        onChange={(e) => setData('title', e.target.value)}
+                        error={!!errors.title}
+                        helperText={errors.title}
                     />
                 </Box>
 
                 <Divider sx={{ mb: 2 }} />
 
                 <Box>
-
                     {/* ВЛАСТИВОСТІ */}
                     <Box>
                         <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ mb: 1, letterSpacing: 1, textTransform: 'uppercase' }}>
@@ -122,11 +132,12 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                 <Box sx={{ width: '100%'}}>
                                     <Autocomplete
                                         multiple
-                                        // limitTags={2}
                                         id="assignees-selector"
                                         size='small'
                                         color='secondary'
-                                        options={TEAM_MEMBERS}
+                                        options={teamMembers}
+                                        value={data.assignees}
+                                        onChange={(event, newValue) => setData('assignees', newValue)}
                                         getOptionLabel={(option) => option.name}
                                         isOptionEqualToValue={(option, value) => option.id === value.id}
                                         
@@ -137,6 +148,8 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                                 label="Виконавець"
                                                 color='secondary'
                                                 sx={{ bgcolor: '#fff', height: 'min-content' }}
+                                                error={!!errors.assignees}
+                                                helperText={errors.assignees}
                                             />
                                         )}
                                     />
@@ -146,7 +159,7 @@ export default function CreateTaskModal({ open, onClose, project }) {
                             {/* Дати */}
                             <Box sx={{ display: 'flex', alignItems: 'center', width: '35%', mt: 1 }}>
                                 <CalendarTodayIcon sx={{ fontSize: 28, mr: 1.5, color: '#f58fe1' }} />
-                                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="uk">
                                     <Box 
                                         sx={{ 
                                             display: 'flex', 
@@ -159,14 +172,16 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                         <DatePicker
                                             format="DD.MM.YY"
                                             label="Дата початку"
+                                            value={data.date_start}
+                                            onChange={(newValue) => setData('date_start', newValue)}
                                             open={openStart}
                                             onClose={() => setOpenStart(false)}
                                             slotProps={{ 
                                                 textField: {
                                                     onClick: () => setOpenStart(true),
-                                                    size: 'small', 
-                                                    // placeholder: 'Початок',
-                                                    // Стилизуем инпут, чтобы он не казался громоздким
+                                                    size: 'small',
+                                                    error:!!errors.date_start,
+                                                    helperText:errors.date_start,
                                                     sx: { 
                                                         width: '100px',
                                                         '& .MuiInputBase-root': { 
@@ -177,7 +192,11 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                                             display: 'none',
                                                         }
                                                     }
-                                                } 
+                                                },
+                                                actionBar: {
+                                                    actions: ['today'], // Кнопка "Сьогодні"
+                                                    sx: { '& .MuiButton-root':{ color: 'secondary.main'}}
+                                                }
                                             }}
                                         />
                                         
@@ -188,6 +207,8 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                         <DatePicker
                                             format="DD.MM.YY"
                                             label="Дата кінця"
+                                            value={data.date_end}
+                                            onChange={(newValue) => setData('date_end', newValue)}
                                             open={openEnd}
                                             onClose={() => setOpenEnd(false)}
                                             slotProps={{ 
@@ -195,6 +216,8 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                                     onClick: () => setOpenEnd(true),
                                                     size: 'small', 
                                                     placeholder: 'Кінець',
+                                                    error:!!errors.date_end,
+                                                    helperText:errors.date_end,
                                                     sx: {
                                                         color: 'secondary',
                                                         width: '100px',
@@ -206,7 +229,11 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                                             display: 'none',
                                                         }
                                                     }
-                                                } 
+                                                },
+                                                actionBar: {
+                                                    actions: ['today'], // Кнопка "Сьогодні"
+                                                    sx: { '& .MuiButton-root':{ color: 'secondary.main'}}
+                                                }
                                             }}
                                         />
                                     </Box>
@@ -224,16 +251,21 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                     <InputLabel id="status-select-label">Статус</InputLabel>
                                     <Select
                                         label="Статус"
+                                        value={data.status}
+                                        onChange={(e) => setData('status', e.target.value)}
                                         labelId='status-select-label'
                                         size="small"
                                         color="secondary"
                                         sx={{ width: '100%' }}
+                                        error={!!errors.status}
+                                        helperText={errors.status}
                                     >
-                                        <MenuItem value="todo">To Do</MenuItem>
-                                        <MenuItem value="in_progress">In Progress</MenuItem>
-                                        <MenuItem value="review">Review</MenuItem>
-                                        <MenuItem value="done">Done</MenuItem>
-                                        <MenuItem value="canceled">Canceled</MenuItem>
+                                        {/* TODO: замень на статусі из енума */}
+                                        {statuses.map((status) => (
+                                            <MenuItem key={status.id} value={status.id}>
+                                                {status.label}
+                                            </MenuItem>
+                                        ))}
                                     </Select>
                                 </FormControl>
                                 
@@ -250,11 +282,20 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                         size="small"
                                         color="secondary"
                                         sx={{ bgcolor: '#fff', width: '110%' }}
+                                        value={data.priority}
+                                        onChange={(e) => setData('priority', e.target.value)}
+                                        error={!!errors.priority}
+                                        helperText={errors.priority}
                                     >
-                                        <MenuItem value="low">Низький</MenuItem>
+                                        {priorities.map((priority) => (
+                                            <MenuItem key={priority.id} value={priority.id}>
+                                                {priority.label}
+                                            </MenuItem>
+                                        ))}
+                                        {/* <MenuItem value="low">Низький</MenuItem>
                                         <MenuItem value="medium">Середній</MenuItem>
                                         <MenuItem value="high">Високий</MenuItem>
-                                        <MenuItem value="critical">Критичний</MenuItem>
+                                        <MenuItem value="critical">Критичний</MenuItem> */}
                                     </Select>
                                 </FormControl>
                             </Box>
@@ -264,30 +305,14 @@ export default function CreateTaskModal({ open, onClose, project }) {
                     {/* DESCRIPTION */}
                     <Box>
                         <TipTapEditor 
-                            value={description} 
-                            onChange={(html) => setDescription(html)} 
+                            value={data.description} 
+                            onChange={(html) => setData('description', html)}
                         />
                     </Box>
-                    {/* <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                            <TextField
-                                placeholder="Додайте детальний опис завдання"
-                                label='Опис'
-                                variant="outlined"
-                                color="secondary"
-                                minRows={3}
-                                multiline
-                                fullWidth
-                                sx={{ mb: 2 }}
-                            />
-                        </Box>
-                    </Box> */}
-                    {/* /DESCRIPTION */}
 
                     {/* Додатково */}
                     <Box>
                         <Accordion
-                            // disableGutters 
                             elevation={0} 
                             sx={{ 
                                 mb: 1, 
@@ -311,16 +336,17 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                         <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <Slider 
                                                 size="small" 
-                                                value={progress} 
-                                                onChange={(e, val) => setProgress(val)} 
+                                                value={data.progress} 
+                                                onChange={(e, val) => setData('progress', val)}
                                                 step={10}
                                                 min={0}
                                                 max={100}
-                                                sx={{ color: 'secondary.main'}} 
-                                                // rgb(207, 112, 222)
+                                                sx={{ color: 'secondary.main'}}
+                                                error={!!errors.progress}
+                                                helperText={errors.progress}
                                             />
                                             <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right', fontWeight: 'bold' }}>
-                                                {progress}%
+                                                {data.progress}%
                                             </Typography>
                                         </Box>
                                     </Box>
@@ -336,12 +362,19 @@ export default function CreateTaskModal({ open, onClose, project }) {
                                                 color="secondary"
                                                 defaultValue="none"
                                                 sx={{ flexGrow: 1, bgcolor: '#fff' }}
+                                                value={data.reminder}
+                                                onChange={(e) => setData('reminder', e.target.value)}
                                             >
-                                                <MenuItem value="none">Без нагадувань</MenuItem>
+                                                {reminders.map((rem) => (
+                                                    <MenuItem key={rem.id} value={rem.id}>
+                                                        {rem.label}
+                                                    </MenuItem>
+                                                ))}
+                                                {/* <MenuItem value="none">Без нагадувань</MenuItem>
                                                 <MenuItem value="1_hour">За 1 годину</MenuItem>
                                                 <MenuItem value="1_day">За 1 день</MenuItem>
                                                 <MenuItem value="2_days">За 2 дні</MenuItem>
-                                                <MenuItem value="1_week">За 1 тиждень</MenuItem>
+                                                <MenuItem value="1_week">За 1 тиждень</MenuItem> */}
                                             </Select>
                                         </FormControl>
                                     </Box>
@@ -359,7 +392,13 @@ export default function CreateTaskModal({ open, onClose, project }) {
                 </Box>
                 
                 <ButtonGroup variant="contained" color="primary" disableElevation sx={{ borderRadius: 2 }}>
-                    <Button onClick={handleCreateTask} sx={{ px: 3 }}>Створити</Button>
+                    <Button
+                        onClick={handleCreateTask}
+                        sx={{ px: 3 }}
+                        disabled={processing}
+                    >
+                        {processing ? 'Створення...' : 'Створити'}
+                    </Button>
                     <Button size="small" onClick={handleSplitButtonClick}><ArrowDropDownIcon /></Button>
                 </ButtonGroup>
                 

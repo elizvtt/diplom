@@ -50,35 +50,35 @@ function useLocalStorage(key, initialValue) {
 }
 
 // ЗАГЛУШКИ
-const mockProjects = [
-    {
-        id: 1,
-        title: 'Оновлення корпоративного сайту',
-        description: 'Повний редизайн та перехід на новий стек технологій.',
-        is_active: 1,
-        is_owner: true,
-        tasks_total: 12,
-        tasks_completed: 9,
-    },
-    {
-        id: 2,
-        title: 'Мобільний додаток для клієнтів',
-        description: 'Розробка iOS та Android додатків.',
-        is_active: 1,
-        is_owner: false,
-        tasks_total: 5,
-        tasks_completed: 5,
-    },
-    {
-        id: 3,
-        title: 'Внутрішня CRM система',
-        description: 'Інтеграція з існуючими базами даних та налаштування ролей.',
-        is_active: 0,
-        is_owner: true,
-        tasks_total: 0,
-        tasks_completed: 0,
-    }
-];
+// const mockProjects = [
+//     {
+//         id: 1,
+//         title: 'Оновлення корпоративного сайту',
+//         description: 'Повний редизайн та перехід на новий стек технологій.',
+//         is_active: 1,
+//         is_owner: true,
+//         tasks_total: 12,
+//         tasks_completed: 9,
+//     },
+//     {
+//         id: 2,
+//         title: 'Мобільний додаток для клієнтів',
+//         description: 'Розробка iOS та Android додатків.',
+//         is_active: 1,
+//         is_owner: false,
+//         tasks_total: 5,
+//         tasks_completed: 5,
+//     },
+//     {
+//         id: 3,
+//         title: 'Внутрішня CRM система',
+//         description: 'Інтеграція з існуючими базами даних та налаштування ролей.',
+//         is_active: 0,
+//         is_owner: true,
+//         tasks_total: 0,
+//         tasks_completed: 0,
+//     }
+// ];
 
 const sortOptions = [
     { value: 'newest', label: 'Спочатку нові' },
@@ -261,22 +261,9 @@ export default function ProjectsList({ projects }) {
             return; 
         }
 
-        // ТИМЧАСОВА ЗАГЛУШКА
-        // console.log('Дані нового проєкту:', data);
-        // handleCloseModal(); 
-        // setSnackbar({
-        //     open: true,
-        //     message: 'Проєкт успішно створено!',
-        //     severity: 'success'
-        // });
-        // setWarnedAboutLength(false); // Скидаємо попередження для наступного разу
-        
         post('/add/project', {
             onSuccess: (page) => {
                 handleCloseModal();
-                console.log('page: ', page);
-                console.log('page.props: ', page.props);
-                console.log('page.props.flash: ', page.props.flash);
 
                 // Дістаємо повідомлення, яке прийшло з контролера
                 const serverMessage = page.props.flash?.success || 'Успіх!';
@@ -709,7 +696,8 @@ export default function ProjectsList({ projects }) {
                     </DialogActions>
                 </form>
             </Dialog>
-            {/* Спливаюче повідомлення (Успіх або Попередження) */}
+
+            {/* Спливаюче повідомлення */}
             <Snackbar 
                 open={snackbar.open} 
                 autoHideDuration={snackbar.severity === 'warning' ? 7000 : 4000} // Попередження висить трохи довше
@@ -719,7 +707,6 @@ export default function ProjectsList({ projects }) {
                 <Alert 
                     onClose={handleCloseSnackbar} 
                     severity={snackbar.severity}
-                    variant="filled" 
                     sx={{ width: '100%', borderRadius: 2 }}
                 >
                     {snackbar.message}

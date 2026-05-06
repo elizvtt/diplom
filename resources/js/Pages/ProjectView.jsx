@@ -1,54 +1,84 @@
-import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateTaskModal from '@/Components/Project/CreateTaskModal';
 
 import { 
-    Box, Button, Card, CardContent, Chip, Dialog, DialogActions,
-    DialogContent, DialogTitle, FormControl, Grid,
-    IconButton, InputLabel, MenuItem, Paper,
-    Select, Tab, Tabs, TextField, Typography,
+    Box, Button, Card, CardContent, Chip,
+    Paper, Tab, Tabs, Typography, Snackbar, Alert,
 } from '@mui/material';
 
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
-import CloseIcon from '@mui/icons-material/Close';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
 
-// колонки канбан доски
-const KANBAN_COLUMNS = [
-    { id: 'todo', title: 'To do', color: '#f48fb1' },
-    { id: 'in_progress', title: 'In progress', color: '#ffb74d' },
-    { id: 'completed', title: 'Completed', color: '#81c784' },
-];
+// const KANBAN_COLUMNS = [
+//     { id: 'todo', title: 'To do', color: '#f48fb1' },
+//     { id: 'in_progress', title: 'In progress', color: '#ffb74d' },
+//     { id: 'completed', title: 'Completed', color: '#81c784' },
+// ];
 
-// Кольори для бейджів пріоритету
-const priorityColors = {
-    low: 'success',
-    medium: 'warning',
-    high: 'error'
+// // Кольори для бейджів пріоритету
+// const priorityColors = {
+//     low: 'success',
+//     medium: 'warning',
+//     high: 'error'
+// };
+
+// Словник кольорів
+const statusColors = {
+    backlog: '#94a3b8',
+    todo: '#f48fb1',
+    in_progress: '#ffb74d',
+    review: '#4fc3f7',
+    done: '#81c784'
 };
 
-export default function ProjectView({ project }) {
+
+export default function ProjectView({ project, teamMembers, statuses, priorities, reminders }) {
+    const kanbanColumns = statuses.map(s => ({
+        id: s.id,
+        title: s.label,
+        color: statusColors[s.id] || '#ccc'
+    }));
+
     const [currentTab, setCurrentTab] = useState(0);
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false); // Стейт для модального вікна
 
-    const [tasks, setTasks] = useState([
-        { id: 't1', title: 'Спроєктувати БД', description: 'Створити ER-діаграму для диплому', status: 'todo', priority: 'high' },
-        { id: 't2', title: 'Налаштувати Laravel', description: 'Підключити Inertia та React', status: 'in_progress', priority: 'medium' },
-        { id: 't3', title: 'Зверстати Header', description: 'Додати лого та меню', status: 'completed', priority: 'low' },
-        { id: 't4', title: 'Зробити Drag and Drop', description: 'Реалізувати HTML5 API', status: 'todo', priority: 'medium' },
-    ]);
+    const [tasks, setTasks] = useState(project.tasks || []);
+    const { flash } = usePage().props; // Отримуємо flash повідомлення
+
+    // Слідкуємо за змінами в project.tasks, які приходять від сервера
+    useEffect(() => {
+        setTasks(project.tasks);
+    }, [project.tasks]); // Як тільки пропси оновляться, стейт синхронізується
+
+    useEffect(() => {
+        const msg = flash?.success || flash?.error;
+        const severity = flash?.success ? 'success' : 'error';
+
+        if (msg) {
+            setSnackbar({
+                open: true,
+                message: msg,
+                severity: severity
+            });
+        }
+    }, [flash]); // Спрацює кожного разу, коли з бекенду прийде flash
+
+    // Стейт для керування Снекбаром
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'success' // 'success', 'error', 'warning', 'info'
+    });
+
+    const handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') return; // Не закриваємо, якщо просто клікнули десь на фоні
+        setSnackbar({ ...snackbar, open: false });
+    };
 
     const handleTabChange = (event, newValue) => setCurrentTab(newValue);
     const handleOpenModal = () => setIsTaskModalOpen(true); // Відкриття модалки
-
-    // Закриття модалки (з блокуванням кліку по фону)
-    const handleCloseModal = (event, reason) => {
-        // Якщо причина закриття - клік по сірому фону, ігноруємо
-        if (reason === 'backdropClick') return;
-        setIsTaskModalOpen(false);
-    };
 
     // Коли починаємо тягнути картку, запам'ятовуємо її ID
     const handleDragStart = (e, taskId) => {
@@ -109,9 +139,7 @@ export default function ProjectView({ project }) {
                     <Tab label="Active" />
                     <Tab label="Tab 2" />
                     <Tab label="Tab 3" />
-                </Tabs>
-
-                   
+                </Tabs>                   
             </Box>
 
             {/* Канбан доска   */}
@@ -131,7 +159,7 @@ export default function ProjectView({ project }) {
                 }}
             
             >
-                {KANBAN_COLUMNS.map((column) => (
+                {kanbanColumns.map((column) => (
                     <Paper
                         key={column.id}
                         variant="outlined"
@@ -203,14 +231,34 @@ export default function ProjectView({ project }) {
                         </Box>
                     </Paper>
                 ))}
-
             </Box>
 
             <CreateTaskModal 
                 open={isTaskModalOpen} 
                 onClose={() => setIsTaskModalOpen(false)} 
                 project={project}
+                teamMembers={teamMembers}
+                statuses={statuses}
+                priorities={priorities}
+                reminders={reminders}
             />
+
+            
+            {/* Спливаюче повідомлення */}
+            <Snackbar 
+                open={snackbar.open} 
+                autoHideDuration={snackbar.severity === 'warning' ? 7000 : 4000} // Попередження висить трохи довше
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }} 
+            >
+                <Alert 
+                    onClose={handleCloseSnackbar} 
+                    severity={snackbar.severity}
+                    sx={{ width: '100%', borderRadius: 2 }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
 
         </AuthenticatedLayout>
     );

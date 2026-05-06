@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
+use App\Enums\TaskReminder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,9 +23,11 @@ class Task extends Model
         'description',
         'status',
         'priority',
-        'deadline',
+        'date_start',
+        'date_end',
         'creator_id',
         'progress',
+        'reminder',
         'is_active',
     ];
 
@@ -37,7 +40,7 @@ class Task extends Model
         return [
             'status' => TaskStatus::class,
             'priority' => TaskPriority::class,
-            'deadline' => 'datetime',
+            'reminder' => TaskReminder::class,
         ];
     }
 
@@ -57,6 +60,15 @@ class Task extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    /**
+     * Виконавці цього завдання
+     */
+    public function assignees()
+    {
+        // Вказуємо назву проміжної таблиці
+        return $this->belongsToMany(TaskAssignee::class, 'task_id');
     }
 
 }

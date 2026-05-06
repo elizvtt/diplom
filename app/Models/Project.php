@@ -53,6 +53,22 @@ class Project extends Model
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    /**
+     * получаем учасников команды
+     */
+    public function members()
+    {    
+        return $this->belongsToMany(User::class, 'project_members', 'project_id', 'user_id');
+    }
+
+    /**
+     * Отримати всі завдання цього проєкту
+     */
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
+    }
+
     // Вказуємо, що для URL використовується uuid
     public function getRouteKeyName()
     {
