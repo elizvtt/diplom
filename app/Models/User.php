@@ -31,9 +31,9 @@ class User extends Authenticatable
      * Атрибуты, которые следует скрыть для сериализации.
      * @var list<string>
      */
-    protected $hidden = [
-        'password',
-    ];
+    protected $hidden = ['password'];
+
+    protected $appends = ['avatar_url'];
 
     /**
      * Получите атрибуты, которые следует преобразовать.
@@ -79,6 +79,13 @@ class User extends Authenticatable
                 // ProjectMember::where('user_id', $user->id)->update(['is_active' => 0]);
             }
         });
+    }
+
+    public function getAvatarUrlAttribute()
+    {
+        return $this->avatar_path
+            ? asset('storage/' . $this->avatar_path)
+            : null;
     }
 
     // /**

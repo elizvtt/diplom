@@ -21,7 +21,7 @@ class ProjectController extends Controller
         // Валидация данных
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:2000'],
+            'description' => ['nullable', 'string', 'max:255'],
             'generate_ai_tasks' => ['nullable', 'boolean'],
         ], [
             'title.required' => 'Введіть назву проєкту',
@@ -34,7 +34,7 @@ class ProjectController extends Controller
         // Створення проєкту в БД
         $project = Project::create([
             'title' => $validated['title'],
-            'description' => $validated['description'] ? ['html' => $validated['description']] : null,
+            'description' => $validated['description'] ?? null,
             'owner_id' => auth()->id(),
             'is_active' => 1,
         ]);
@@ -60,9 +60,21 @@ class ProjectController extends Controller
         $userId = auth()->id();
         // Дістаємо проєкти, де власник — поточний авторизований користувач
         $projects = Project::where('owner_id', $userId)
+            ->where('is_active', 1)
+            ->withCount([
+                'tasks as tasks_total' => function ($query) { // Рахуємо загальну кількість активних завдань
+                    $query->where('is_active', 1);
+                },
+                'tasks as tasks_completed' => function ($query) { // Рахуємо кількість завершених активних завдань
+                    $query->where('is_active', 1)->where('status', 'done');
+                }
+            ])
             ->orderBy('created_at', 'desc') // За замовчуванням сортуємо від нових до старих
             ->get()
-            ->map(fn ($project) => $this->projectFormatterForFront($project, $userId));
+            ->map(function ($project) use ($userId) {
+                $project->is_owner = $project->owner_id === $userId;
+                return $project;
+            });
         
         debug($projects);
         
@@ -74,39 +86,33 @@ class ProjectController extends Controller
     }
 
     /**
-     * Форматує об'єкт проєкту для зручного використання на фронтенді
-     */
-    private function projectFormatterForFront(Project $project, int $userId) : Project
-    {
-        $project->is_owner = $project->owner_id === $userId;
-        
-        // Тимчасові заглушки для прогрес-бару
-        // $project->tasks_total = 0;
-        // $project->tasks_completed = 0;
-
-        return $project;
-
-    }
-
-    /**
      * Відображення сторінки конкретного проєкту
      */
     public function show(Project $project)
     {
         if ($project->owner_id !== auth()->id()) abort(403, 'У вас немає доступу до цього проєкту.');
 
-        $project->load(['owner', 'members', 'tasks']);
+        // $project->load([
+        //     'owner',
+        //     'members',
+        //     'tasks.assignees',
+        // ]);
+        // завантажуємо зв'язки та лічильники
+        $project->loadCount([
+            'tasks as tasks_total' => fn($q) => $q->where('is_active', 1),
+            'tasks as tasks_completed' => fn($q) => $q->where('is_active', 1)->where('status', 'done'),
+        ])->load(['owner', 'members', 'tasks.assignees']);
 
         $teamMembers = collect([$project->owner])
-        ->merge($project->members)
-        ->unique('id')
-        ->values() // Переиндексируем массив
-        ->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->full_name,
-            ];
-        });
+            ->merge($project->members)
+            ->unique('id')
+            ->values() // Переиндексируем массив
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->full_name,
+                ];
+            });
 
         return Inertia::render('ProjectView', [
             'project' => $project,

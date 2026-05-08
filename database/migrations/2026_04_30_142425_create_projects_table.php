@@ -16,7 +16,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
             
             $table->string('title');
-            $table->json('description')->nullable(); // описание необязательно
+            $table->string('description')->nullable(); // описание необязательно
 
             $table->foreignId('owner_id')->constrained('users');
 

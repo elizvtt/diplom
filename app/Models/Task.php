@@ -38,6 +38,7 @@ class Task extends Model
     protected function casts(): array
     {
         return [
+            'description' => 'array',
             'status' => TaskStatus::class,
             'priority' => TaskPriority::class,
             'reminder' => TaskReminder::class,
@@ -63,12 +64,22 @@ class Task extends Model
     }
 
     /**
-     * Виконавці цього завдання
+     * Дані виконавців
+     */
+    public function assigneesData()
+    {
+        // Одне завдання має багато записів у таблиці task_assignees
+        return $this->hasMany(TaskAssignee::class, 'task_id');
+    }
+
+    /**
+     * Користувачі-виконавці
      */
     public function assignees()
     {
-        // Вказуємо назву проміжної таблиці
-        return $this->belongsToMany(TaskAssignee::class, 'task_id');
+        // Якщо ти хочеш отримувати відразу об'єкти User
+        return $this->belongsToMany(User::class, 'task_assignees', 'task_id', 'user_id')
+                    ->withPivot('status', 'progress', 'completed_at'); 
     }
 
 }

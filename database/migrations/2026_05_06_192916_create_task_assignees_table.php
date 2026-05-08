@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('task_assigness', function (Blueprint $table) {
+        Schema::create('task_assignees', function (Blueprint $table) {
             $table->id();
 
             // Зв'язок із завданням та користувачем
@@ -38,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('task_assigness');
+        Schema::dropIfExists('task_assignees');
     }
 };

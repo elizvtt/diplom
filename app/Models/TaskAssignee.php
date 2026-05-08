@@ -40,28 +40,36 @@ class TaskAssignee extends Model
      */
     protected static function booted()
     {
+        // Щоразу, коли запис про виконавця збережено (створено або оновлено)
         static::saved(function (TaskAssignee $assignee) {
+            $assignee->refreshTaskStatus();
+        });
+
+        // якщо виконавця видалили, теж треба перерахувати статус задачі
+        static::deleted(function (TaskAssignee $assignee) {
             $assignee->refreshTaskStatus();
         });
     }
 
     /**
-     * @return void
+     * Логіка перерахунку статусу основної задачі
      */
     public function refreshTaskStatus()
     {
-        $task = $this->task;
-        $allAssignees = $task->assigneesData; // Получаем всех исполнителей этой задачи
+        $task = $this->task()->first(); 
+        if (!$task) return;
 
+        // Отримуємо всіх виконавців цієї задачі
+        $allAssignees = $task->assigneesData()->get(); 
         $statuses = $allAssignees->pluck('status');
 
-        // Если есть хотя бы один InProgress -> задача InProgress
+        // Якщо хоч один почав робити (InProgress) -> вся задача В процесі
         if ($statuses->contains(TaskAssigneeStatus::InProgress)) {
             $task->update(['status' => TaskStatus::InProgress]);
             return;
         }
 
-        // Если ВСЕ исполнители имеют статус Completed -> задача Done
+        // Якщо ВСІ закінчили (Completed) -> вся задача Виконана
         $isAllDone = $statuses->every(fn($status) => $status === TaskAssigneeStatus::Completed);
         
         if ($isAllDone && $statuses->isNotEmpty()) {
@@ -71,7 +79,7 @@ class TaskAssignee extends Model
 
     /**
      * Проєкт в котором это задание
-     * @return BelongsTo<Task, $this>
+     * @return BelongsTo<Task,$this>
      */
     public function task()
     {
@@ -80,7 +88,7 @@ class TaskAssignee extends Model
 
     /**
      * создатель задания
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<User,$this>
      */
     public function user()
     {

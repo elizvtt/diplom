@@ -1,49 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
+
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import CreateTaskModal from '@/Components/Project/CreateTaskModal';
+
+import CreateTaskModal from '@/Components/Tasks/CreateTaskModal';
+import KanbanBoard from '@/Components/Project/KanbanBoard';
+import ListView from '@/Components/Project/ListView';
+import CalendarView from '@/Components/Project/CalendarView';
+
+import useLocalStorage from '@/hooks/useLocalStorage';
 
 import { 
-    Box, Button, Card, CardContent, Chip,
-    Paper, Tab, Tabs, Typography, Snackbar, Alert,
+    Box, Button, Tab, Tabs, Typography, Snackbar, Alert,
 } from '@mui/material';
 
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
 
-// const KANBAN_COLUMNS = [
-//     { id: 'todo', title: 'To do', color: '#f48fb1' },
-//     { id: 'in_progress', title: 'In progress', color: '#ffb74d' },
-//     { id: 'completed', title: 'Completed', color: '#81c784' },
-// ];
-
-// // Кольори для бейджів пріоритету
-// const priorityColors = {
-//     low: 'success',
-//     medium: 'warning',
-//     high: 'error'
-// };
-
-// Словник кольорів
-const statusColors = {
-    backlog: '#94a3b8',
-    todo: '#f48fb1',
-    in_progress: '#ffb74d',
-    review: '#4fc3f7',
-    done: '#81c784'
-};
+import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 
 export default function ProjectView({ project, teamMembers, statuses, priorities, reminders }) {
-    const kanbanColumns = statuses.map(s => ({
-        id: s.id,
-        title: s.label,
-        color: statusColors[s.id] || '#ccc'
-    }));
 
-    const [currentTab, setCurrentTab] = useState(0);
+    // Використовуємо хук для зберігання ВСІХ вкладок проектів
+    const [allTabs, setAllTabs] = useLocalStorage('activeProjectTabs', {});
+
+    // Визначаємо поточну вкладку для цього конкретного проекту
+    const currentTab = allTabs[project.uuid] || 'kanban';
+   
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false); // Стейт для модального вікна
-
     const [tasks, setTasks] = useState(project.tasks || []);
     const { flash } = usePage().props; // Отримуємо flash повідомлення
 
@@ -66,44 +53,49 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
     }, [flash]); // Спрацює кожного разу, коли з бекенду прийде flash
 
     // Стейт для керування Снекбаром
-    const [snackbar, setSnackbar] = useState({
-        open: false,
-        message: '',
-        severity: 'success' // 'success', 'error', 'warning', 'info'
-    });
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
     const handleCloseSnackbar = (event, reason) => {
         if (reason === 'clickaway') return; // Не закриваємо, якщо просто клікнули десь на фоні
         setSnackbar({ ...snackbar, open: false });
     };
 
-    const handleTabChange = (event, newValue) => setCurrentTab(newValue);
+    const handleTabChange = (event, newValue) => {
+        setAllTabs({
+            ...allTabs,
+            [project.uuid]: newValue
+        });
+    };
+    
     const handleOpenModal = () => setIsTaskModalOpen(true); // Відкриття модалки
 
     // Коли починаємо тягнути картку, запам'ятовуємо її ID
-    const handleDragStart = (e, taskId) => {
-        e.dataTransfer.setData('taskId', taskId);
-    };
+    const handleDragStart = (e, taskId) => e.dataTransfer.setData('taskId', taskId);
 
-    // Дозволяємо кидати елементи в цю зону (обов'язково для HTML5 D&D)
-    const handleDragOver = (e) => {
-        e.preventDefault();
-    };
+    // Дозволяємо кидати елементи в цю зону
+    const handleDragOver = (e) => e.preventDefault();
 
     // Коли відпускаємо картку над колонкою
-    const handleDrop = (e, newStatus) => {
-        e.preventDefault();
-        const draggedTaskId = e.dataTransfer.getData('taskId');
+    const handleDrop = (e, newStatus, manualId = null) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
-        // Оновлюємо статус завдання в стейті
-        setTasks((prevTasks) => 
-            prevTasks.map((task) => 
-                task.id === draggedTaskId ? { ...task, status: newStatus } : task
-            )
-        );
+        // Якщо прийшов manualId (від кнопки), беремо його, інакше з DragEvent
+        const taskId = manualId || e.dataTransfer.getData('taskId');
 
-        // TODO: У майбутньому тут буде axios.patch() для збереження нового статусу в БД
-        // axios.patch(`/tasks/${draggedTaskId}/status`, { status: newStatus });
+        setTasks(prev => prev.map(t => t.id == taskId ? { ...t, status: newStatus } : t));
+
+        // Запит до БД
+        router.post('/tasks/update-status', {
+            id: taskId,
+            status: newStatus
+        }, {
+            preserveScroll: true,
+            onSuccess: () => console.log('Успішно оновлено в БД'),
+            onError: (errors) => {
+                console.error('Помилка валідації:', errors);
+                router.reload();
+            }
+        });
     };
 
 
@@ -135,104 +127,64 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                 </Box>
 
                 {/* Вкладки */}
-                <Tabs value={currentTab} onChange={handleTabChange} sx={{ mb: 3 }}>
-                    <Tab label="Active" />
-                    <Tab label="Tab 2" />
-                    <Tab label="Tab 3" />
-                </Tabs>                   
+               <Tabs value={currentTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+                    <Tab 
+                        icon={<ViewKanbanIcon />} 
+                        iconPosition="start" 
+                        label="Kanban" 
+                        value="kanban" 
+                    />
+                    <Tab 
+                        icon={<ListAltIcon />} 
+                        iconPosition="start" 
+                        label="List" 
+                        value="list" 
+                    />
+                    <Tab 
+                        icon={<CalendarMonthIcon />} 
+                        iconPosition="start" 
+                        label="Calendar" 
+                        value="calendar" 
+                    />
+                </Tabs>         
             </Box>
-
-            {/* Канбан доска   */}
-            <Box
-                sx={{
-                    maxWidth: '92vw',
-                    width: '100%',
-                    height: '61vh',
-                    overflowX: 'auto',
-                    display: 'flex',
-                    flexWrap: 'nowrap',
-                    gap: 2,
-                    pb: 1,
-
-                    '&::-webkit-scrollbar': { height: '8px' },
-                    '&::-webkit-scrollbar-thumb': { backgroundColor: '#c1c1c1', borderRadius: '4px' },
-                }}
-            
-            >
-                {kanbanColumns.map((column) => (
-                    <Paper
-                        key={column.id}
-                        variant="outlined"
+            {/* Перемикач контенту */}
+            <Box sx={{ mt: 2 }}>
+                {currentTab === 'kanban' && (
+                    <KanbanBoard 
+                        tasks={tasks}
+                        statuses={statuses}
+                        priorities={priorities}
+                        reminders={reminders}
+                        onDragStart={handleDragStart}
                         onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, column.id)}
-                        sx={{
-                            p: 2,
-                            width: '350px',
-                            minWidth: '350px',
-                            flexShrink: 0,
-                            borderTop: `4px solid ${column.color}`,
-                            backgroundColor: '#f8fafc',
-                        }}
-                    >
-                        <Typography variant="h6" align="center" gutterBottom fontWeight="bold" color="text.secondary">
-                            {column.title}
-                        </Typography>
-                        
-                        {/* котейнер для карточек */}
-                        <Box 
-                            sx={{ 
-                                flexGrow: 1, 
-                                overflowY: 'auto', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                gap: 2,
-                                height: '90%',
-                                p: 1,
+                        onDrop={handleDrop}
+                    />
+                )}
 
-                                '&::-webkit-scrollbar': { width: '4px' },
-                                '&::-webkit-scrollbar-thumb': { backgroundColor: '#e0e0e0', borderRadius: '4px' },
-                            }}
-                        >
-                            {tasks
-                                .filter(task => task.status === column.id)
-                                .map(task => (
-                                    <Card 
-                                        key={task.id}
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, task.id)}
-                                        sx={{ 
-                                            cursor: 'grab', 
-                                            '&:active': { cursor: 'grabbing' },
-                                            boxShadow: 1,
-                                            '&:hover': { boxShadow: 3 },
-                                            borderRadius: 2,
-                                            flexShrink: 0 
-                                        }}
-                                    >
-                                        <CardContent sx={{ pb: '16px !important' }}>
-                                            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
-                                                {task.title}
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                                {task.description}
-                                            </Typography>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Chip 
-                                                    label={task.priority.toUpperCase()} 
-                                                    size="small" 
-                                                    color={priorityColors[task.priority]} 
-                                                    variant="outlined"
-                                                    sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
-                                                />
-                                            </Box>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                        </Box>
-                    </Paper>
-                ))}
+                {currentTab === 'list' && (
+                    <ListView
+                        tasks={tasks}
+                        statuses={statuses}
+                        priorities={priorities}
+                        reminders={reminders}
+                        onDrop={handleDrop}
+                    />
+                )}
+
+                {currentTab === 'calendar' && (
+                    <CalendarView 
+                        tasks={tasks}
+                        statuses={statuses}
+                        priorities={priorities}
+                        reminders={reminders}
+                        // onDrop={handleDrop}
+                    />
+                )}
             </Box>
+            
 
+            {/* МОДАЛКА СОЗДАНИЯ НОВОГО ЗАДАНИЯ */}
             <CreateTaskModal 
                 open={isTaskModalOpen} 
                 onClose={() => setIsTaskModalOpen(false)} 

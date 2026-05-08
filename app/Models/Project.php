@@ -22,16 +22,16 @@ class Project extends Model
         'is_active',
     ];
 
-    /**
-     * Правила преобразования типов
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'description' => 'array',
-        ];
-    }
+    // /**
+    //  * Правила преобразования типов
+    //  * @return array<string, string>
+    //  */
+    // protected function casts(): array
+    // {
+    //     return [
+    //         'description' => 'array',
+    //     ];
+    // }
     protected static function boot()
     {
         parent::boot();

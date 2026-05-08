@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
-import TipTapEditor from '@/Components/Project/TipTapEditor';
+import TipTapEditor from '@/Components/Editors/TipTapEditor';
 
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
@@ -12,7 +12,8 @@ import {
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+
 
 import CloseIcon from '@mui/icons-material/Close';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
@@ -24,7 +25,7 @@ import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export default function CreateTaskModal({ open, onClose, project, teamMembers, statuses, priorities, reminders }) {
-    console.log('teamMembers: ', teamMembers);
+    // console.log('teamMembers: ', teamMembers);
     const [openStart, setOpenStart] = useState(false);
     const [openEnd, setOpenEnd] = useState(false);
     
@@ -54,6 +55,10 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
         handleSplitMenuClose();
     };
 
+    useEffect(() => {
+        if (!open) reset(); // Очищає всі поля до початкових значень
+    }, [open]);
+
     // Форматируем данные
     transform((formData) => ({
         ...formData,
@@ -70,13 +75,12 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
         post('/add/task', {
             preserveScroll: true,
             onSuccess: () => {
-            // закриття або продовження створення
-            if (createMode === 'create_close') {
-                onClose(); // Закриваємо модалку
-                reset();   // Очищаємо форму
-            } else {
-                reset(); // Очищаємо форму
-            }
+                // закриття або продовження створення
+                if (createMode === 'create_close') {
+                    onClose(); // Закриваємо модалку
+                    reset();   // Очищаємо форму
+
+                } else reset(); // Очищаємо форму
             },
 
         });
@@ -84,7 +88,14 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
 
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <Dialog
+            open={open}
+            onClose={(event, reason) => {
+                if (reason !== 'backdropClick') onClose();
+            }}
+            fullWidth
+            PaperProps={{ sx: { borderRadius: 3 } }}
+        >
             {/* ХЕДЕР */}
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -157,7 +168,7 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                             </Box>
 
                             {/* Дати */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', width: '35%', mt: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', width: '50%', mt: 1 }}>
                                 <CalendarTodayIcon sx={{ fontSize: 28, mr: 1.5, color: '#f58fe1' }} />
                                 <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="uk">
                                     <Box 
@@ -169,8 +180,8 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                         }}
                                     >
                                         {/* Дата начала */}
-                                        <DatePicker
-                                            format="DD.MM.YY"
+                                        <DateTimePicker
+                                            format="DD.MM.YY HH:mm"
                                             label="Дата початку"
                                             value={data.date_start}
                                             onChange={(newValue) => setData('date_start', newValue)}
@@ -183,10 +194,10 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                                     error:!!errors.date_start,
                                                     helperText:errors.date_start,
                                                     sx: { 
-                                                        width: '100px',
-                                                        '& .MuiInputBase-root': { 
-                                                            fontSize: '0.6rem',
-                                                            paddingRight: '8px', // Убираем пустое пространство справа
+                                                        width: '112px',
+                                                        '& .MuiPickersInputBase-root': {
+                                                            fontSize: '0.85rem',
+                                                            padding: '0 8px', // Убираем пустое пространство справа
                                                         },
                                                         '& .MuiInputAdornment-root': {
                                                             display: 'none',
@@ -204,8 +215,8 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                         <Typography color="text.secondary" sx={{ fontWeight: 'bold' }}>-</Typography>
                                         
                                         {/* Дата конца */}
-                                        <DatePicker
-                                            format="DD.MM.YY"
+                                        <DateTimePicker
+                                            format="DD.MM.YY HH:mm"
                                             label="Дата кінця"
                                             value={data.date_end}
                                             onChange={(newValue) => setData('date_end', newValue)}
@@ -219,11 +230,14 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                                     error:!!errors.date_end,
                                                     helperText:errors.date_end,
                                                     sx: {
-                                                        color: 'secondary',
-                                                        width: '100px',
-                                                        '& .MuiInputBase-root': { 
-                                                            fontSize: '0.75rem',
-                                                            paddingRight: '8px',
+                                                        width: '117px',
+                                                        '& .MuiPickersInputBase-root': {
+                                                            fontSize: '0.85rem',
+                                                            padding: '0 8px',
+                                                        },
+                                                        '& .MuiPickersSectionList-root': {
+                                                            width: '100%',
+                                                            maxWidth: '100%',
                                                         },
                                                         '& .MuiInputAdornment-root': {
                                                             display: 'none',
@@ -292,10 +306,6 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                                 {priority.label}
                                             </MenuItem>
                                         ))}
-                                        {/* <MenuItem value="low">Низький</MenuItem>
-                                        <MenuItem value="medium">Середній</MenuItem>
-                                        <MenuItem value="high">Високий</MenuItem>
-                                        <MenuItem value="critical">Критичний</MenuItem> */}
                                     </Select>
                                 </FormControl>
                             </Box>

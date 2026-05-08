@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\TaskAssignee;
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
 use App\Enums\TaskReminder;
+use App\Enums\TaskAssigneeStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -18,7 +20,7 @@ class TaskController extends Controller
         $validated = $request->validate([
             'project_id' => ['required', $this->projectAccessRule()],
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'], // TipTap відправляє HTML-рядок
+            'description' => ['nullable', 'string'],
             'date_start' => ['nullable', 'date'],
             'date_end' => ['nullable', 'date', 'after_or_equal:date_start'], // Має бути пізніше дати початку
             'status' => ['required', Rule::enum(TaskStatus::class)],
@@ -47,7 +49,7 @@ class TaskController extends Controller
             'project_id' => $validated['project_id'],
             'creator_id' => Auth::id(),
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ? ['text' => $validated['description']] : null,
             'date_start' => $validated['date_start'],
             'date_end' => $validated['date_end'],
             'status' => $validated['status'],
@@ -57,10 +59,16 @@ class TaskController extends Controller
             'is_active' => 1,
         ]);
 
-        // Додавання виконавців
+        // додавання виконавців
         if (!empty($validated['assignees'])) {
-            // Метод sync автоматично додасть потрібні записи у проміжну таблицю
-            $task->assignees()->sync($validated['assignees']);
+            foreach ($validated['assignees'] as $userId) {
+                TaskAssignee::create([
+                    'task_id' => $task->id,
+                    'user_id' => $userId,
+                    'status'  => TaskAssigneeStatus::Assigned,
+                    'progress' => 0
+                ]);
+            }
         }
 
         // Повернення відповіді з повідомленням для Snackbar
@@ -87,5 +95,23 @@ class TaskController extends Controller
                 });
             });
         });
+    }
+
+    public function updateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => ['required', 'exists:tasks,id'], // Перевіряємо, чи є таке ID в базі
+            'status' => ['required', Rule::enum(TaskStatus::class)],
+        ]);
+
+        // Знаходимо модель по ID з запиту
+        $task = Task::findOrFail($validated['id']);
+        
+        $task->update([
+            'status' => $validated['status']
+        ]);
+
+        // return back()->with('success', 'Статус оновлено');
+        return back();
     }
 }
