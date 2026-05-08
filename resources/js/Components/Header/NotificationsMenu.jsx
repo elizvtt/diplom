@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 
+import NotificationItem from '@/Components/Header/NotificationItem';
+
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
-import dayjs from 'dayjs';
-import 'dayjs/locale/uk';
 
 // Импорты MUI компонентов
 import {
@@ -16,7 +16,6 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // Иконка календаря
-
 
 
 export default function NotificationsMenu({ user }) {
@@ -68,7 +67,6 @@ export default function NotificationsMenu({ user }) {
                 fullWidth
                 PaperProps={{ sx: { borderRadius: 3 } }}
             >
-                {/* <NotificationContent></NotificationContent> */}
                 {/* ШАПКА МОДАЛКИ*/}
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', pb: 1 }}>
                     <Typography variant="h5" fontWeight="bold">
@@ -159,38 +157,8 @@ export default function NotificationsMenu({ user }) {
                         </LocalizationProvider>
                     </Popover>
 
-                    {/* СПИСОК КАРТОЧЕК УВЕДОМЛЕНИЙ */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {filtered.length === 0 ? (
-                            <Typography textAlign="center" color="text.secondary" sx={{ mt: 2 }}>
-                                За обраними фільтрами сповіщень немає.
-                            </Typography>
-                        ) : (
-                            filtered.map((notif) => (
-                                <Box 
-                                    key={notif.id} 
-                                    sx={{ 
-                                        p: 2, 
-                                        bgcolor: notif.read ? '#f4f4f4' : '#ffff',
-                                        borderRadius: 2,    // Скругленные углы карточки
-                                        border: notif.read ? '1px solid #e0e0e0' : '1px solid #8a2db1', // Рамка
-                                    }}
-                                >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                        <Typography variant="subtitle1" fontWeight="bold">
-                                            {notif.title}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {dayjs(notif.date).format('DD.MM')} {notif.time}
-                                        </Typography>
-                                    </Box>
-                                    <Typography variant="body2" color="text.secondary">
-                                        {notif.text}
-                                    </Typography>
-                                </Box>
-                            ))
-                        )}
-                    </Box>
+                    {/* КАРТОЧКА УВЕДОМЛЕНИЯ */}
+                    <NotificationItem notifications={filtered} />
 
                 </DialogContent>
             </Dialog>
