@@ -3,9 +3,11 @@ import { Link, usePage} from '@inertiajs/react';
 
 import NotificationsMenu from '@/Components/Header/NotificationsMenu';
 import UserMenu from '@/Components/Header/UserMenu';
+import AdminMenu from '@/Components/Header/AdminMenu';
 
 import { AppBar, Box, Toolbar, Typography, Tooltip } from '@mui/material';
 
+// import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 export default function AppHeader() {
     const auth = usePage().props.auth; // Получаем данные юзера
 
@@ -28,6 +30,7 @@ export default function AppHeader() {
                 </Typography> 
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', textAlign: 'center', color: '#475c4b' }}>
+                    <AdminMenu user={auth.user} />
                     {/* УВЕДОМЛЕНИЯ  */}
                     <NotificationsMenu user={auth.user} />
                     {/* АВАТАРКА */}

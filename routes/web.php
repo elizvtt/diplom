@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\AdminController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,5 +55,11 @@ Route::middleware('auth')->group(function () {
     // обновоения статуса
     Route::post('/tasks/update-status', [TaskController::class, 'updateStatus']);
 
-    
+
+});
+
+// сторінка тільки для адміна
+Route::middleware(['auth', 'can:admin-access'])->group(function () {
+    Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
+    Route::post('/admin/verify-password', [AdminController::class, 'verifyPassword']);
 });

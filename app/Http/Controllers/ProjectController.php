@@ -29,27 +29,40 @@ class ProjectController extends Controller
             'description.max'  => 'Опис проєкту занадто довгий',
         ]);
 
-        debug($validated);
+        try {
+            $project = Project::create([
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'owner_id' => auth()->id(),
+                'is_active' => 1,
+            ]);
 
-        // Створення проєкту в БД
-        $project = Project::create([
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'owner_id' => auth()->id(),
-            'is_active' => 1,
-        ]);
-        
-        if ($request->boolean('generate_ai_tasks')) {
-            // ТУТ МАЄ БУТИ ВИКЛИК ЧЕРГИ (Job). 
-            // ШІ генерує відповідь довго (10-20 сек). Якщо робити це синхронно, 
-            // браузер користувача зависне. 
-            // GenerateAiTasks::dispatch($project);
+            // Успішний лог
+            Log::info("Проєкт створено успішно", [
+                'project_id' => $project->id,
+                'ai_generation_requested' => $request->boolean('generate_ai_tasks'),
+            ]);
+            
+            if ($request->boolean('generate_ai_tasks')) {
+                Log::info("ШІ-генерація увімкнена для проєкту ID: {$project->id}");
+                // GenerateAiTasks::dispatch($project);
+            }
 
-            // Поки що просто запишемо в лог, щоб бачити, що прапорець працює
-            Log::info("ШІ-генерація увімкнена для проєкту ID: {$project->id}");
+            return redirect()->back()->with('success', 'Проєкт успішно створено!');
+
+        } catch (\Exception $e) {
+    
+            Log::error("Помилка при створенні проєкту", [
+                'error_message' => $e->getMessage(),
+                'stack_trace' => $e->getTraceAsString(),
+                'input_data' => $request->except(['password', '_token']), // Записуємо що вводив юзер, але без секретів
+            ]);
+
+            // Повертаємо користувача назад із повідомленням про помилку
+            return redirect()->back()->withErrors([
+                'error' => 'Виникла технічна помилка при створенні проєкту'
+            ]);
         }
-
-        return redirect()->back()->with('success', 'Проєкт успішно створено!');
     }
 
     /**
@@ -92,11 +105,6 @@ class ProjectController extends Controller
     {
         if ($project->owner_id !== auth()->id()) abort(403, 'У вас немає доступу до цього проєкту.');
 
-        // $project->load([
-        //     'owner',
-        //     'members',
-        //     'tasks.assignees',
-        // ]);
         // завантажуємо зв'язки та лічильники
         $project->loadCount([
             'tasks as tasks_total' => fn($q) => $q->where('is_active', 1),

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Enums\UserRole;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,5 +24,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+        
+        Gate::define('admin-access', function (User $user) {
+            debug($user->role->value);
+            debug($user->role->value === 'admin');
+            return $user->role->value === 'admin';
+        });
     }
 }

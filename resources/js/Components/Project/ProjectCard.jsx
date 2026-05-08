@@ -14,7 +14,8 @@ import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 export default function ProjectCard({ project }) {
     return (
         <Card
-            sx={{ 
+            sx={{
+                width: '20rem',
                 height: '100%', 
                 display: 'flex', 
                 flexDirection: 'column',

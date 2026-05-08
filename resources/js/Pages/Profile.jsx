@@ -139,9 +139,7 @@ export default function Profile({ auth, notificationSettingsList }) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={null}
-        >
+        <AuthenticatedLayout header={null} >
             <Head title="Профіль" />
 
             {/* <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4, mb: 8 }}> */}
