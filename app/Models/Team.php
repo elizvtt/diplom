@@ -30,7 +30,6 @@ class Team extends Model
         return [
             
             'role' => TeamRole::class,
-            // 'is_active' => 'boolean', // Автоматично перетворює 0/1 з бази на true/false
 
         ];
     }

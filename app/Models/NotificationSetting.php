@@ -14,17 +14,15 @@ class NotificationSetting extends Model
 
     protected $fillable = [
         'user_id',
-        'event',
+        'events',
         'channel',
-        'is_enabled',
     ];
 
     protected function casts(): array
     {
         return [
-            'event' => NotificationEvent::class,
+            'events' => 'array',
             'channel' => NotificationChannel::class,
-            // 'is_enabled' => 'boolean',
         ];
     }
 

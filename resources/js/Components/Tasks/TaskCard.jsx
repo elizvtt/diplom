@@ -1,6 +1,7 @@
 import React from 'react';
 import DOMPurify from 'dompurify';
 import { priorityColors } from '@/utils/constants';
+
 import {
     Box, Card, CardContent, Typography, IconButton,
     Tooltip, Avatar, AvatarGroup, Collapse, Divider
@@ -41,15 +42,10 @@ const getReminderDate = (task) => {
     return endDate;
 };
 
-// const priorityColors = {
-//     low: '#1a8638',
-//     medium: '#ff7300',
-//     high: '#ff0000',
-//     critical: 'hsl(0, 90%, 19%)',
-// };
-
-export default function TaskCard({ task, priorities, openedSubtasks, toggleSubtasks, onDragStart, onDrop }) {
+export default function TaskCard({ task, priorities, openedSubtasks, toggleSubtasks, onDragStart, onDrop, onClick }) {
     const isOpen = openedSubtasks[task.id];
+    // console.log('[TaskCard] task: ', task)
+    // console.log('[TaskCard] priorities: ', priorities)
 
     const priorityConfig = priorityColors[task.priority];
     const reminderDate = getReminderDate(task);
@@ -60,6 +56,7 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
         <Card
             draggable
             onDragStart={(e) => onDragStart(e, task.id)}
+            onClick={onClick}
             sx={{
                 cursor: 'pointer',
                 transition: '0.2s',
@@ -140,7 +137,6 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
 
                 {/* FOOTER */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-
                     {/* ASSIGNEES */}
                     <AvatarGroup max={3}
                         sx={{
@@ -207,7 +203,6 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
                 {task.subtasks_count > 0 && (
                     <>
                         <Divider sx={{ my: 1 }} />
-
                         <Box
                             sx={{
                                 display: 'flex',

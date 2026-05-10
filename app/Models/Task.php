@@ -82,4 +82,20 @@ class Task extends Model
                     ->withPivot('status', 'progress', 'completed_at'); 
     }
 
+    /**
+     * Прикрепленные файлы
+     */
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class)->where('is_active', 1);
+    }
+    
+    /**
+     * Прикрепленные файлы
+     */
+    public function comments()
+    {
+        return $this->hasMany(Comment::class)->where('is_active', 1);
+    }
+
 }

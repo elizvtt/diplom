@@ -1,5 +1,5 @@
-import { Head } from '@inertiajs/react';
 import React, { useState } from 'react';
+import { Head } from '@inertiajs/react';
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
@@ -15,7 +15,7 @@ import { Alert, Snackbar, Box, Grid } from '@mui/material';
 
 
 export default function ProjectsList({ projects }) {
-    console.log('projects: ', projects);
+    // console.log('[ProjectsList] projects: ', projects);
 
     // Стейт для всех настроек
     const [settings, setSettings] = useLocalStorage('project_list', {
@@ -42,11 +42,11 @@ export default function ProjectsList({ projects }) {
     const [sortMenuAnchor, setSortMenuAnchor] = useState(null);
     
 
-    const [snackbar, setSnackbar] = useState({
-        open: false,
-        message: '',
-        severity: 'warning',
-    });
+    // const [snackbar, setSnackbar] = useState({
+    //     open: false,
+    //     message: '',
+    //     severity: 'warning',
+    // });
 
 
     // ^ Handlers
@@ -80,10 +80,10 @@ export default function ProjectsList({ projects }) {
         if (reason && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return;
         setIsModalOpen(false);
     };
-    const handleCloseSnackbar = (event, reason) => {
-        if (reason === 'clickaway') return;
-        setSnackbar(prev => ({ ...prev, open: false }));
-    };
+    // const handleCloseSnackbar = (event, reason) => {
+    //     if (reason === 'clickaway') return;
+    //     setSnackbar(prev => ({ ...prev, open: false }));
+    // };
 
     
     return (
@@ -152,7 +152,7 @@ export default function ProjectsList({ projects }) {
             />
             
             {/* Спливаюче повідомлення */}
-            <Snackbar 
+            {/* <Snackbar 
                 open={snackbar.open} 
                 autoHideDuration={6000} // Попередження висить трохи довше
                 onClose={handleCloseSnackbar}
@@ -165,7 +165,7 @@ export default function ProjectsList({ projects }) {
                 >
                     {snackbar.message}
                 </Alert>
-            </Snackbar>
+            </Snackbar> */}
 
         </AuthenticatedLayout>
     );

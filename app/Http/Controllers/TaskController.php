@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use App\Models\TaskAssignee;
+use App\Models\Attachment;
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
 use App\Enums\TaskReminder;
@@ -31,6 +32,9 @@ class TaskController extends Controller
             // Перевіряємо, що assignees - це масив, і кожен ID реально існує в таблиці users
             'assignees' => ['nullable', 'array'],
             'assignees.*' => ['exists:users,id'],
+
+            // проверка файлов
+            'files.*' => ['file','max:10240', 'mimes:pdf,docx,jpg,jpeg,png'],
         ], [
             'title.required' => 'Введіть назву завдання',
             'title.max' => 'Надто довга назва завдання',
@@ -40,6 +44,8 @@ class TaskController extends Controller
             'progress.min' => 'Мінімальний прогресс дорівнює 0',
             'progress.max' => 'Максимальний прогресс дорівнює 100',
             'assignees.*.exists' => 'Обраний виконавець не знайдений у системі',
+            'files.*.mimes' => 'Дозволені лише PDF, DOCX, JPG та PNG файли.',
+            'files.*.max' => 'Максимальний розмір файлу — 10 MB.',
         ]);
 
         debug($validated);
@@ -67,6 +73,22 @@ class TaskController extends Controller
                     'user_id' => $userId,
                     'status'  => TaskAssigneeStatus::Assigned,
                     'progress' => 0
+                ]);
+            }
+        }
+
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+
+                $path = $file->store('attachments', 'public');
+
+                Attachment::create([
+                    'task_id' => $task->id,
+                    'user_id' => Auth::id(),
+                    'filename' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
                 ]);
             }
         }
@@ -113,5 +135,10 @@ class TaskController extends Controller
 
         // return back()->with('success', 'Статус оновлено');
         return back();
+    }
+
+    public function updateTask(Request $request)
+    {
+        debug($request);
     }
 }

@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import TipTapEditor from '@/Components/Editors/TipTapEditor';
+import dayjs from 'dayjs';
 
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Box, Typography, Button, TextField, Select, MenuItem,
     IconButton, Slider, ButtonGroup, Menu, Divider,
-    FormControl, InputLabel,
-    Autocomplete, Accordion, AccordionDetails, AccordionSummary
+    FormControl, InputLabel, Tooltip, 
+    Autocomplete, Accordion, AccordionDetails, AccordionSummary,
+    FormHelperText
 } from '@mui/material';
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-
 
 import CloseIcon from '@mui/icons-material/Close';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
@@ -33,6 +34,8 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
     const [anchorEl, setAnchorEl] = useState(null);
     const [createMode, setCreateMode] = useState('create_close'); // 'create_close' або 'create_next'
 
+    const [dragActive, setDragActive] = useState(false);
+
     // ДАННЫЕ ФОРМЫ
     const { data, setData, post, processing, errors, reset, transform } = useForm({
         title: '',
@@ -44,7 +47,31 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
         priority: 'medium',
         reminder: 'none',
         progress: 0,
+        files: [],
     });
+
+    const getAvailableReminders = () => {
+        // Якщо дата кінця не обрана, дозволяємо тільки "Немає"
+        if (!data.date_end) return reminders.filter(r => r.id === 'none');
+
+        const now = dayjs(); // Поточний час
+        const deadline = dayjs(data.date_end);
+        const diffInHours = deadline.diff(now, 'hour');
+
+        return reminders.filter(rem => {
+            if (rem.id === 'none') return true;
+
+            // Логіка обмежень (в годинах)
+            switch (rem.id) {
+                case '1_hour':  return diffInHours >= 1;
+                case '1_day':   return diffInHours >= 24;
+                case '2_days':  return diffInHours >= 48;
+                case '1_week':  return diffInHours >= 168; // 24 * 7
+                default: return true;
+            }
+        });
+    };
+    const availableReminders = getAvailableReminders();
 
     const handleSplitButtonClick = (event) => setAnchorEl(event.currentTarget);
 
@@ -55,25 +82,55 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
         handleSplitMenuClose();
     };
 
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragActive(false);
+
+        const droppedFiles = Array.from(e.dataTransfer.files);
+
+        setData('files', [...data.files, ...droppedFiles]);
+    };
+
     useEffect(() => {
         if (!open) reset(); // Очищає всі поля до початкових значень
     }, [open]);
 
+    useEffect(() => {
+        if (!data.date_end) setData('reminder', 'none');
+    }, [data.date_end]);
+
+    useEffect(() => {
+        const isStillValid = availableReminders.some(r => r.id === data.reminder);
+        if (!isStillValid) setData('reminder', 'none');
+    }, [data.date_end]);
+
     // Форматируем данные
-    transform((formData) => ({
-        ...formData,
-        project_id: project.id,
-        assignees: formData.assignees.map(u => u.id),
-        date_start: formData.date_start ? formData.date_start.format('YYYY-MM-DD HH:mm:ss') : null,
-        date_end: formData.date_end ? formData.date_end.format('YYYY-MM-DD HH:mm:ss') : null,
-        reminder: formData.reminder !== 'none' ? formData.reminder : null,
-    }));
+    // transform((formData) => ({
+    //     ...formData,
+    //     project_id: project.id,
+    //     assignees: formData.assignees.map(u => u.id),
+    //     date_start: formData.date_start ? formData.date_start.format('YYYY-MM-DD HH:mm:ss') : null,
+    //     date_end: formData.date_end ? formData.date_end.format('YYYY-MM-DD HH:mm:ss') : null,
+    //     reminder: formData.reminder !== 'none' ? formData.reminder : null,
+    // }));
+
+    
 
     // Головна функція створення завдання
     const handleCreateTask = () => {
-        console.log('data:', data);
+        transform((formData) => ({
+            ...formData,
+            project_id: project.id,
+            assignees: formData.assignees.map(u => u.id),
+            date_start: formData.date_start ? formData.date_start.format('YYYY-MM-DD HH:mm:ss') : null,
+            date_end: formData.date_end ? formData.date_end.format('YYYY-MM-DD HH:mm:ss') : null,
+            reminder: formData.reminder !== 'none' ? formData.reminder : null,
+        }));
+
         post('/add/task', {
             preserveScroll: true,
+            forceFormData: true,
+
             onSuccess: () => {
                 // закриття або продовження створення
                 if (createMode === 'create_close') {
@@ -183,6 +240,7 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                         <DateTimePicker
                                             format="DD.MM.YY HH:mm"
                                             label="Дата початку"
+                                            ampm={false}
                                             value={data.date_start}
                                             onChange={(newValue) => setData('date_start', newValue)}
                                             open={openStart}
@@ -218,6 +276,7 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                         <DateTimePicker
                                             format="DD.MM.YY HH:mm"
                                             label="Дата кінця"
+                                            ampm={false}
                                             value={data.date_end}
                                             onChange={(newValue) => setData('date_end', newValue)}
                                             open={openEnd}
@@ -261,7 +320,12 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                             {/* Статус */}
                             <Box sx={{ display: 'flex', alignItems: 'center', width: '35%', mt: 1 }}>
                                 <ViewColumnOutlinedIcon sx={{ fontSize: 24, mr: 1.5, color: '#f58fe1' }} />
-                                <FormControl size="small" color="secondary" sx={{ width: '100%' }}>
+                                <FormControl
+                                    size="small"
+                                    color="secondary"
+                                    sx={{ width: '100%' }}
+                                    error={!!errors.status}
+                                >
                                     <InputLabel id="status-select-label">Статус</InputLabel>
                                     <Select
                                         label="Статус"
@@ -271,16 +335,14 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                         size="small"
                                         color="secondary"
                                         sx={{ width: '100%' }}
-                                        error={!!errors.status}
-                                        helperText={errors.status}
                                     >
-                                        {/* TODO: замень на статусі из енума */}
                                         {statuses.map((status) => (
                                             <MenuItem key={status.id} value={status.id}>
                                                 {status.label}
                                             </MenuItem>
                                         ))}
                                     </Select>
+                                    <FormHelperText>{errors.status}</FormHelperText>
                                 </FormControl>
                                 
                                 
@@ -337,6 +399,7 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
 
                             <AccordionDetails sx={{ pt: 0, pb: 2 }}>
                                 
+                                {/* ПРОГРЕСС И НАПОМИНАНИЯ */}
                                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
 
                                     <Box sx={{ width: '50%'}}>
@@ -352,8 +415,6 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                                                 min={0}
                                                 max={100}
                                                 sx={{ color: 'secondary.main'}}
-                                                error={!!errors.progress}
-                                                helperText={errors.progress}
                                             />
                                             <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right', fontWeight: 'bold' }}>
                                                 {data.progress}%
@@ -363,35 +424,138 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
 
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                         <NotificationsNoneIcon sx={{ fontSize: 28, mr: 0.3, color: 'secondary.main'}} />
-                                        <FormControl size="small" color="secondary" sx={{ width: '100%' }}>
-                                            <InputLabel id="notif-select-label">Нагадування</InputLabel>
-                                            <Select
-                                                lavelId='notif-select-label'
-                                                label='Нагадування'
-                                                size="small"
-                                                color="secondary"
-                                                defaultValue="none"
-                                                sx={{ flexGrow: 1, bgcolor: '#fff' }}
-                                                value={data.reminder}
-                                                onChange={(e) => setData('reminder', e.target.value)}
-                                            >
-                                                {reminders.map((rem) => (
-                                                    <MenuItem key={rem.id} value={rem.id}>
-                                                        {rem.label}
-                                                    </MenuItem>
-                                                ))}
-                                                {/* <MenuItem value="none">Без нагадувань</MenuItem>
-                                                <MenuItem value="1_hour">За 1 годину</MenuItem>
-                                                <MenuItem value="1_day">За 1 день</MenuItem>
-                                                <MenuItem value="2_days">За 2 дні</MenuItem>
-                                                <MenuItem value="1_week">За 1 тиждень</MenuItem> */}
-                                            </Select>
-                                        </FormControl>
+                                        <Tooltip title={!data.date_end ? 'Спочатку встановіть дату завершення' : ''}>
+                                            <FormControl size="small" color="secondary" sx={{ width: '100%' }}>
+                                                <InputLabel id="notif-select-label">Нагадування</InputLabel>
+                                                <Select
+                                                    labelId='notif-select-label'
+                                                    label='Нагадування'
+                                                    size="small"
+                                                    color="secondary"
+                                                    defaultValue="none"
+                                                    sx={{ flexGrow: 1, bgcolor: '#fff' }}
+                                                    disabled={!data.date_end}
+                                                    value={data.reminder}
+                                                    onChange={(e) => setData('reminder', e.target.value)}
+                                                >
+                                                    {availableReminders.map((rem) => (
+                                                        <MenuItem key={rem.id} value={rem.id}>
+                                                            {rem.label}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Tooltip>
                                     </Box>
+                                </Box>
+                                <Box
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        setDragActive(true);
+                                    }}
+                                    onDragLeave={() => setDragActive(false)}
+                                    onDrop={handleDrop}
+                                    sx={{
+                                        border: '2px dashed',
+                                        bgcolor: dragActive ? '#f9c5eed6' : '#f9c5ef3b',
+                                        borderColor: 'primary.main',
+                                        borderRadius: 3,
+                                        p: 3,
+                                        mt: 2,
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.docx,.jpg,.jpeg,.png"
+                                        id="task-files"
+                                        hidden
+                                       onChange={(e) => setData('files', [...data.files, ...Array.from(e.target.files)])}
+                                    />
+
+                                    <label htmlFor="task-files">
+                                        <Button
+                                            component="span"
+                                            variant="contained"
+                                            color="secondary"
+                                        >
+                                            Завантажити файли
+                                        </Button>
+                                    </label>
+                                    <Typography variant="body2" sx={{ mb: 2 }}>
+                                        або перетягніть файли сюди
+                                    </Typography>
+
+                                    <Typography
+                                        variant="body2"
+                                        sx={{ mt: 1 }}
+                                    >
+                                        Дозволені формати: <b>PDF, DOCX, JPG та PNG</b><br /> Максимальний розмір файлу <b>10МБ</b>
+                                    </Typography>
+                                    
+                                    {errors.files && (
+                                        <Typography color="error" variant="caption">
+                                            {errors.files}
+                                        </Typography>
+                                    )}
+
+                                    {data.files?.length > 0 && (
+                                        <Box
+                                            sx={{
+                                                mt: 2,
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 1,
+                                                alignItems: 'flex-start'
+                                            }}
+                                        >
+                                            {data.files.map((file, index) => (
+                                               <Box
+                                                    key={index}
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        width: '100%',
+                                                        '&:hover': { bgcolor: '#fff', borderRadius: 2 },
+                                                    }}
+                                                >
+                                                    <Typography
+                                                        title={file.name}
+                                                        sx={{
+                                                            fontWeight: 600,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            maxWidth: '90%'
+                                                        }}
+                                                    >
+                                                        <Box component="span" sx={{ fontSize: '22px' }}>📎</Box>
+                                                        {file.name}
+                                                    </Typography>
+
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={() => {
+                                                            const updatedFiles = data.files.filter((_, i) => i !== index);
+                                                            setData('files', updatedFiles);
+                                                        }}
+                                                    >
+                                                        <CloseIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    )}
                                 </Box>
                             </AccordionDetails>
                         </Accordion>
                     </Box>
+
                 </Box>
             </DialogContent>
 

@@ -20,3 +20,13 @@ export const schedulerColorMap = {
     review: 'blue',
     done: 'green'
 };
+
+export const EVENT_LABELS = {
+    task_assigned: 'Призначено нове завдання',
+    task_completed: 'Завдання виконано',
+    task_created: 'Створено нове завдання у проєкті',
+    grade_changed: 'Оцінку змінено',
+    new_comment: 'Новий коментар',
+    deadline_risk: 'Ризик дедлайну',
+    project_invite: 'Запрошення до проєкту'
+};

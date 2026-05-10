@@ -1,27 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { EVENT_LABELS } from '@/utils/constants';
+
 import { 
     Box, Typography, Button, TextField, Paper, Menu, MenuItem,
     Divider, Switch, FormControlLabel, Avatar, Badge, IconButton,
-    FormGroup, Snackbar, Alert
+    FormGroup, Snackbar, Alert, Grid
 } from '@mui/material';
 
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import EmailIcon from '@mui/icons-material/Email';
 
 export default function Profile({ auth, notificationSettingsList }) {
-    if (!auth || !auth.user) {
-        return <div>Завантаження...</div>; // Або просто нічого не рендерити
-    }
+    if (!auth || !auth.user) return <div>Завантаження...</div>;
+
     const user = auth.user;
-    console.log('[Profile.jsx] user: ', user);
+    // console.log('[Profile.jsx] user: ', user);
+    // console.log('[Profile.jsx] notificationSettingsList: ', notificationSettingsList);
 
     const fileInputRef = useRef(null);
 
-    // Форма Inertia (головний стан сторінки)
+    // Форма Inertia 
     const { data, setData, post, processing, errors, reset } = useForm({
         full_name: user.full_name || '',
         email: user.email || '',
@@ -36,7 +40,7 @@ export default function Profile({ auth, notificationSettingsList }) {
     const [avatarMenuAnchor, setAvatarMenuAnchor] = useState(null);
     const [backUrl, setBackUrl] = useState('/'); // Стейт для зберігання шляху повернення
     const [isChangeSaved, setChangeSaved] = useState(false); // стейт для відстеження змін
-    const [snackbarOpen, setSnackbarOpen] = useState(false); // Стейт для Snackbar
+    // const [snackbarOpen, setSnackbarOpen] = useState(false); // Стейт для Snackbar
 
     // ^ ефекти
     // логіка навігації
@@ -111,19 +115,35 @@ export default function Profile({ auth, notificationSettingsList }) {
         handleAvatarMenuClose();
     };
 
-    // Обробка зміни конкретного детального налаштування
-    const handleDetailedSettingChange = (index, checked) => {
+    // Функція обробки зміни в JSON
+    const handleDetailedSettingChange = (settingIndex, eventKey, isChecked) => {
         const newSettings = [...data.settings];
-        newSettings[index].is_enabled = checked ? 1 : 0;
+        // Оновлюємо конкретний івент у JSON-об'єкті конкретного каналу
+        newSettings[settingIndex].events[eventKey] = isChecked;
         setData('settings', newSettings);
     };
 
-    // Функція закриття повідомлення
-    const handleCloseSnackbar = (event, reason) => {
-        // Не закриваємо, якщо користувач просто клікнув десь в іншому місці екрана
-        if (reason === 'clickaway') return;
-        
-        setSnackbarOpen(false);
+    const handleMasterEmailChange = (checked) => {        
+        const updatedSettings = data.settings.map(setting => {
+            // Працюємо тільки з каналом пошти
+            if (setting.channel === 'mail') {
+                const updatedEvents = { ...setting.events };
+                
+                // Проходимо по всіх ключах і встановлюємо значення 'checked' (true або false)
+                Object.keys(updatedEvents).forEach(key => {
+                    updatedEvents[key] = checked;
+                });
+                
+                return { ...setting, events: updatedEvents };
+            }
+            return setting;
+        });
+
+        setData({
+            ...data,
+            email_notification: checked,
+            settings: updatedSettings
+        });
     };
 
     const submit = (e) => {
@@ -132,7 +152,7 @@ export default function Profile({ auth, notificationSettingsList }) {
         preserveScroll: true,
             onSuccess: () => {
                 setChangeSaved(false);
-                setSnackbarOpen(true); // Показуємо повідомлення про успіх
+                // setSnackbarOpen(true);
             }
             
         });
@@ -275,7 +295,8 @@ export default function Profile({ auth, notificationSettingsList }) {
                                 control={
                                     <Switch 
                                         checked={data.email_notification} 
-                                        onChange={(e) => setData('email_notification', e.target.checked)} 
+                                        // onChange={(e) => setData('email_notification', e.target.checked)} 
+                                        onChange={(e) => handleMasterEmailChange(e.target.checked)} 
                                         color="primary" 
                                     />
                                 }
@@ -295,28 +316,74 @@ export default function Profile({ auth, notificationSettingsList }) {
                             Детальні сповіщення:
                         </Typography>
                         
-                        <FormGroup sx={{ ml: 1, mb: 4 }}>
-                            {/* Якщо бекенд ще не передає settings, покажемо заглушку */}
+                        <Box sx={{ mt: 1, mb: 2 }}>
                             {data.settings.length > 0 ? (
-                                data.settings.map((setting, index) => (
-                                    <FormControlLabel
-                                        key={index}
-                                        control={
-                                            <Switch 
-                                                checked={Boolean(setting.is_enabled)} 
-                                                onChange={(e) => handleDetailedSettingChange(index, e.target.checked)} 
-                                                size="small"
-                                            />
-                                        }
-                                        label={`${setting.event} (Канал: ${setting.channel})`}
-                                    />
-                                ))
+                                <Grid container spacing={4}> {/* Головний контейнер для двох колонок */}
+                                    {data.settings.map((channelSetting, sIndex) => (
+                                        <Grid item xs={12} md={6} key={channelSetting.id}>
+                                            <Box sx={{ 
+                                                p: 2, 
+                                                border: '1px solid #f0f0f0', 
+                                                borderRadius: 3, 
+                                                height: '100%', 
+                                                bgcolor: channelSetting.channel === 'database' ? '#fdfcfe' : '#ffffff' 
+                                            }}>
+                                                <Typography 
+                                                    variant="subtitle2" 
+                                                    sx={{ 
+                                                        color: 'secondary.main', 
+                                                        mb: 2, 
+                                                        textTransform: 'uppercase', 
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 'bold',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1 
+                                                    }}
+                                                >
+                                                    {channelSetting.channel === 'database' ? (
+                                                        <>
+                                                            <NotificationsIcon sx={{ fontSize: '1.1rem' }} /> 
+                                                            Сповіщення в Edutive
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <EmailIcon sx={{ fontSize: '1.1rem' }} /> 
+                                                            Електронна пошта
+                                                        </>
+                                                    )}
+                                                </Typography>
+                                                
+                                                <FormGroup>
+                                                    {Object.keys(channelSetting.events).map((eventKey) => (
+                                                        <FormControlLabel
+                                                            key={eventKey}
+                                                            sx={{ 
+                                                                mb: 0.5,
+                                                                '& .MuiTypography-root': { fontSize: '0.875rem' } 
+                                                            }}
+                                                            control={
+                                                                <Switch 
+                                                                    disabled={channelSetting.channel === 'mail' && !data.email_notification}
+                                                                    checked={channelSetting.events[eventKey]} 
+                                                                    onChange={(e) => handleDetailedSettingChange(sIndex, eventKey, e.target.checked)} 
+                                                                    size="small"
+                                                                />
+                                                            }
+                                                            label={EVENT_LABELS[eventKey] || eventKey}
+                                                        />
+                                                    ))}
+                                                </FormGroup>
+                                            </Box>
+                                        </Grid>
+                                    ))}
+                                </Grid>
                             ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                    Детальні налаштування ще не завантажені...
+                                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                                    Завантаження налаштувань...
                                 </Typography>
                             )}
-                        </FormGroup>
+                        </Box>
 
                         {/* КНОПКА ЗБЕРЕЖЕННЯ */}
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
@@ -344,7 +411,7 @@ export default function Profile({ auth, notificationSettingsList }) {
                     </form>
                 </Paper>
                 {/* Спливаюче повідомлення про успіх */}
-                <Snackbar 
+                {/* <Snackbar 
                     open={snackbarOpen} 
                     autoHideDuration={4000} // Зникне самостійно через 4 секунди
                     onClose={handleCloseSnackbar}
@@ -358,7 +425,7 @@ export default function Profile({ auth, notificationSettingsList }) {
                     >
                         Дані успішно оновлено!
                     </Alert>
-                </Snackbar>
+                </Snackbar> */}
             </Box>
         </AuthenticatedLayout>
     );

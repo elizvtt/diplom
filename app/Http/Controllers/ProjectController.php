@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\Project;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Facades\Log;
+
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
 use App\Enums\TaskReminder;
@@ -59,9 +59,7 @@ class ProjectController extends Controller
             ]);
 
             // Повертаємо користувача назад із повідомленням про помилку
-            return redirect()->back()->withErrors([
-                'error' => 'Виникла технічна помилка при створенні проєкту'
-            ]);
+            return redirect()->back()->with('error', 'Виникла технічна помилка при створенні проєкту');
         }
     }
 
@@ -109,7 +107,8 @@ class ProjectController extends Controller
         $project->loadCount([
             'tasks as tasks_total' => fn($q) => $q->where('is_active', 1),
             'tasks as tasks_completed' => fn($q) => $q->where('is_active', 1)->where('status', 'done'),
-        ])->load(['owner', 'members', 'tasks.assignees']);
+        // ])->load(['owner', 'members', 'tasks.assignees', 'tasks.attachments', 'tasks.comments']);
+        ])->load(['owner', 'members', 'tasks.assignees', 'tasks.attachments', 'tasks.comments.user']);
 
         $teamMembers = collect([$project->owner])
             ->merge($project->members)

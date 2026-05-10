@@ -37,7 +37,7 @@ class Comment extends Model
      * задание, к которому относится коментарий
      * @return BelongsTo<Task, $this>
      */
-    public function Task()
+    public function task()
     {
         return $this->belongsTo(Task::class, 'task_id');
     }

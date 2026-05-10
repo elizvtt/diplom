@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Head, usePage, router } from '@inertiajs/react';
+import { Head, usePage, router, Link } from '@inertiajs/react';
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 import CreateTaskModal from '@/Components/Tasks/CreateTaskModal';
+import TaskView from '@/Components/Tasks/TaskView';
+
 import KanbanBoard from '@/Components/Project/KanbanBoard';
 import ListView from '@/Components/Project/ListView';
 import CalendarView from '@/Components/Project/CalendarView';
 
 import useLocalStorage from '@/hooks/useLocalStorage';
 
-import { 
-    Box, Button, Tab, Tabs, Typography, Snackbar, Alert,
-} from '@mui/material';
+import { Box, Button, Tab, Tabs, Typography, Snackbar, Alert } from '@mui/material';
 
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
@@ -30,35 +30,20 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
     // Визначаємо поточну вкладку для цього конкретного проекту
     const currentTab = allTabs[project.uuid] || 'kanban';
    
+    // console.log('[ProjectView] project:', project)
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false); // Стейт для модального вікна
     const [tasks, setTasks] = useState(project.tasks || []);
     const { flash } = usePage().props; // Отримуємо flash повідомлення
+
+    // Додай до стейтів у ProjectView
+    const [selectedTask, setSelectedTask] = useState(null); // Яке завдання відкрите
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // Окремий стейт для деталей
 
     // Слідкуємо за змінами в project.tasks, які приходять від сервера
     useEffect(() => {
         setTasks(project.tasks);
     }, [project.tasks]); // Як тільки пропси оновляться, стейт синхронізується
 
-    useEffect(() => {
-        const msg = flash?.success || flash?.error;
-        const severity = flash?.success ? 'success' : 'error';
-
-        if (msg) {
-            setSnackbar({
-                open: true,
-                message: msg,
-                severity: severity
-            });
-        }
-    }, [flash]); // Спрацює кожного разу, коли з бекенду прийде flash
-
-    // Стейт для керування Снекбаром
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
-    const handleCloseSnackbar = (event, reason) => {
-        if (reason === 'clickaway') return; // Не закриваємо, якщо просто клікнули десь на фоні
-        setSnackbar({ ...snackbar, open: false });
-    };
 
     const handleTabChange = (event, newValue) => {
         setAllTabs({
@@ -98,6 +83,11 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
         });
     };
 
+    // Функція для відкриття модалки з даними завдання
+    const handleTaskClick = (task) => {
+        setSelectedTask(task);
+        setIsDetailsModalOpen(true);
+    };
 
     return (
         <AuthenticatedLayout
@@ -117,7 +107,13 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                     </Typography>
                     
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button variant="outlined" color='secondary' startIcon={<GroupIcon />}>
+                        <Button
+                            variant="outlined"
+                            color='secondary'
+                            startIcon={<GroupIcon />}
+                            component={Link}
+                            href={`/projects/${project.uuid}/team`}
+                        >
                             Команда
                         </Button>
                         <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenModal}>
@@ -159,6 +155,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         onDragStart={handleDragStart}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
+                        onTaskClick={handleTaskClick}
                     />
                 )}
 
@@ -169,6 +166,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         priorities={priorities}
                         reminders={reminders}
                         onDrop={handleDrop}
+                        onTaskClick={handleTaskClick}
                     />
                 )}
 
@@ -178,6 +176,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         statuses={statuses}
                         priorities={priorities}
                         reminders={reminders}
+                        onTaskClick={handleTaskClick}
                         // onDrop={handleDrop}
                     />
                 )}
@@ -195,22 +194,17 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                 reminders={reminders}
             />
 
-            
-            {/* Спливаюче повідомлення */}
-            <Snackbar 
-                open={snackbar.open} 
-                autoHideDuration={snackbar.severity === 'warning' ? 7000 : 4000} // Попередження висить трохи довше
-                onClose={handleCloseSnackbar}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }} 
-            >
-                <Alert 
-                    onClose={handleCloseSnackbar} 
-                    severity={snackbar.severity}
-                    sx={{ width: '100%', borderRadius: 2 }}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
+            <TaskView
+                // task={selectedTask}
+                task={project.tasks.find(t => t.id === selectedTask?.id)}
+                project={project}
+                teamMembers={teamMembers}                
+                priorities={priorities}
+                statuses={statuses}
+                open={isDetailsModalOpen} 
+                onClose={() => setIsDetailsModalOpen(false)} 
+                onStatusChange={handleDrop}
+            />
 
         </AuthenticatedLayout>
     );

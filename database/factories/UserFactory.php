@@ -1,52 +1,29 @@
 <?php
-
 namespace Database\Factories;
 
+use App\Enums\UserRole; // Переконайся, що шлях до Enum правильний
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
- */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            // Замінили name на full_name
-            'full_name' => fake()->name(), 
-            
+            'full_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
-            'password' => static::$password ??= Hash::make('password'),
-            
-            // Додали ваші нові поля:
+            'password' => static::$password ??= Hash::make('password'), // Пароль для всіх: password
             'email_notification' => 1,
-            'role' => fake()->randomElement(['user', 'admin']), // Випадково призначить user або admin
+            // Вибираємо випадкову роль зі списку доступних в Enum
+            'role' => fake()->randomElement(array_column(UserRole::cases(), 'value')),
             'is_active' => 1,
             'avatar_path' => null,
-            
+            'created_at' => now(),
+            'updated_at' => now(),
             'remember_token' => Str::random(10),
         ];
-    }
-
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
     }
 }

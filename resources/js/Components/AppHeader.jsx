@@ -10,7 +10,7 @@ import { AppBar, Box, Toolbar, Typography, Tooltip } from '@mui/material';
 // import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 export default function AppHeader() {
     const auth = usePage().props.auth; // Получаем данные юзера
-
+    // console.log('auth: ', auth);
     return (
         <AppBar
             position="fixed" 
@@ -32,7 +32,7 @@ export default function AppHeader() {
                 <Box sx={{ display: 'flex', alignItems: 'center', textAlign: 'center', color: '#475c4b' }}>
                     <AdminMenu user={auth.user} />
                     {/* УВЕДОМЛЕНИЯ  */}
-                    <NotificationsMenu user={auth.user} />
+                    <NotificationsMenu user={auth.user} notifications={auth.notifications}/>
                     {/* АВАТАРКА */}
                     <UserMenu user={auth.user} />
                 </Box>            

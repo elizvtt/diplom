@@ -14,13 +14,13 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         
-        return Inertia::render('Profile');
-        // Завантажуємо детальні налаштування користувача
-        // $notificationSettings = $user->notificationSettings()->get(); // Припускаємо, що у вас є відношення hasMany
-        
-        // return Inertia::render('Profile', [
-            // 'notificationSettingsList' => $notificationSettings
-        // ]);
+        return Inertia::render('Profile', [
+            'auth' => [
+                'user' => $request->user(),
+            ],
+            // Отримуємо 2 рядки (database та mail)
+            'notificationSettingsList' => $request->user()->notificationSettings()->get(),
+        ]);
     }
 
 

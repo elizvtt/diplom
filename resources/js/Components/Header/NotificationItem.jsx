@@ -3,12 +3,15 @@ import dayjs from 'dayjs';
 
 import { Box, Typography } from '@mui/material'; // Импорты MUI компонентов
 
-export default function NotificationItem({ notifications }) {
+export default function NotificationItem({ notifications, isFiltered }) {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {notifications.length === 0 ? (
                 <Typography textAlign="center" color="text.secondary" sx={{ mt: 2 }}>
-                    За обраними фільтрами сповіщень немає.
+                    {isFiltered 
+                        ? 'Нічого не знайдено за фільтрами' 
+                        : 'Сповіщень поки немає'
+                    }
                 </Typography>
             ) : (
                 notifications.map((notification) => (

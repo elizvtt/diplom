@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Enums\UserRole;
+use \App\Enums\NotificationEvent;;
+use \App\Enums\NotificationChannel;
+use \App\Models\NotificationSetting;
 
 class User extends Authenticatable
 {
@@ -83,9 +86,28 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute()
     {
-        return $this->avatar_path
-            ? asset('storage/' . $this->avatar_path)
-            : null;
+        return $this->avatar_path ? asset('storage/' . $this->avatar_path)             : null;
+    }
+
+    
+    public function createDefaultNotificationSettings(): void
+    {
+        $defaultEvents = [];
+        foreach (NotificationEvent::cases() as $event) {
+            $defaultEvents[$event->value] = true;
+        }
+
+        foreach (NotificationChannel::cases() as $channel) {
+            $this->notificationSettings()->firstOrCreate(
+                ['channel' => $channel->value],
+                ['events' => $defaultEvents]
+            );
+        }
+    }
+
+    public function notificationSettings()
+    {
+        return $this->hasMany(NotificationSetting::class);
     }
 
     // /**

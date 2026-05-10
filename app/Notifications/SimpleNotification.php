@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\MailMessage;
 
 class SimpleNotification extends Notification
 {
@@ -14,7 +15,7 @@ class SimpleNotification extends Notification
         public string $type, 
         public string $title, 
         public string $message,
-        public ?int $targetId = null // ID задачи или проекта для ссылки
+        public ?int $targetId = null
     ) {}
 
     public function via(object $notifiable): array
@@ -27,12 +28,11 @@ class SimpleNotification extends Notification
         }
 
         // Проверяем: хочет ли пользователь получать это на Email?
-        if ($notifiable->prefersNotification($this->type, 'mail')) {
-            $channels[] = 'mail';
-        }
+        // if ($notifiable->prefersNotification($this->type, 'mail')) {
+        //     $channels[] = 'mail';
+        // }
 
         return $channels;
-        // return ['database'];
     }
 
     public function toDatabase(object $notifiable): array
@@ -43,6 +43,15 @@ class SimpleNotification extends Notification
             'message' => $this->message,
             'target_id' => $this->targetId,
         ];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject($this->title)
+            ->line($this->message)
+            ->action('Переглянути', url('/invite/' . $this->targetId)) // Тут targetId може бути токеном або ID
+            ->line('Дякуємо, що користуєтесь нашим сервісом!');
     }
 }
 

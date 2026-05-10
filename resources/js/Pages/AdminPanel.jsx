@@ -9,9 +9,8 @@ import AdminLogs from '@/Components/Admin/AdminLogs';
 import AdminSettings from '@/Components/Admin/AdminSettings';
 
 import {
-    Container, Grid, Paper, Typography, Box,
-    IconButton, Table, TableBody, TableCell, TableContainer, TableHead, 
-    TableRow, Button, TextField, Tabs, Tab, Chip, LinearProgress,
+    Container, Paper, Typography, Box,
+    IconButton, Tabs, Tab, Chip,
 } from '@mui/material';
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';

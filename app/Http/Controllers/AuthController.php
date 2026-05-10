@@ -38,6 +38,7 @@ class AuthController extends Controller
             'is_active' => 1,
         ]);
 
+
         // Сразу авторизуем пользователя
         Auth::login($user);
 

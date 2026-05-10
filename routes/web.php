@@ -5,6 +5,10 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\AttachmentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,7 +58,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/add/task', [TaskController::class, 'createTask'])->name('task.store');
     // обновоения статуса
     Route::post('/tasks/update-status', [TaskController::class, 'updateStatus']);
+    Route::post('/tasks/{task}/update', [TaskController::class, 'updateTask']);
+    
 
+    Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');
+
+    Route::post('/projects/{project}/invitations', [InvitationController::class, 'invite'])->name('projects.invitations.store');
+
+    Route::post('/projects/{project}/invitations/search', [InvitationController::class, 'searchUser'])->name('projects.invitations.search');
+
+    Route::get('/projects/{project}/join', [InvitationController::class, 'join'])->name('projects.invitations.join');
+   
+    // & КОММЕНТАРИИ
+    Route::post('/add/comment', [CommentController::class, 'addComment'])->name('comments.store');
+    Route::post('/delete/comments/{comment}', [CommentController::class, 'deleteComment'])->name('comments.destroy');
+
+    // & ФАЙЛЫ
+    Route::post('/add/file', [AttachmentController::class, 'store']);
+    Route::post('/delete/files/{attachment}', [AttachmentController::class, 'delete']);
 
 });
 

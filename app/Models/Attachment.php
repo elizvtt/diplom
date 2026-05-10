@@ -23,16 +23,16 @@ class Attachment extends Model
         'is_active',
     ];
 
-    /**
-     * Правила преобразования типов
-     * @return array<string, string>
-     */
-    protected function casts()
-    {
-        return [
+    // /**
+    //  * Правила преобразования типов
+    //  * @return array<string, string>
+    //  */
+    // protected function casts()
+    // {
+    //     return [
           
-        ];
-    }
+    //     ];
+    // }
 
     /**
      * заадние в котором материалы

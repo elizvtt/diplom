@@ -49,7 +49,7 @@ export default function TaskListItem({ task, statuses, priorities, onStatusChang
         <React.Fragment>
             <TableRow hover sx={{ cursor: 'pointer', '&:hover .task-options': { opacity: 1 }, '& > *': { borderBottom: 'unset' } }} >
                 {/* '& > *' - Прибираємо лінію, якщо є підзадачі */}
-                {/* 1. Кнопка Статусу завдання  */}
+                {/* Кнопка Статусу завдання  */}
                 <TableCell padding="checkbox" sx={{ pl: 2 }}>
                     <Tooltip title="Змінити статус">
                         <IconButton

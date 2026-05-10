@@ -9,7 +9,7 @@ import {
 
 
 export default function AdminUsers({ users }) {
-    console.log('users: ', users);
+    // console.log('users: ', users);
     return (
         <>
             <Paper sx={{ p: 3, borderRadius: 3 }}>

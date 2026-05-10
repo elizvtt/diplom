@@ -16,17 +16,14 @@ return new class extends Migration
         Schema::create('notification_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            
-            $table->enum('event', array_column(NotificationEvent::cases(), 'value'));
             $table->enum('channel', array_column(NotificationChannel::cases(), 'value'));
-            
-            $table->tinyInteger('is_enabled')->default(1); // По умолчанию всё включено
+            $table->json('events');
 
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
 
             // У одного пользователя может быть только одна 
-            $table->unique(['user_id', 'event', 'channel']);
+            $table->unique(['user_id', 'channel']);
 
         });
     }

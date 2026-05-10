@@ -30,5 +30,7 @@ class AppServiceProvider extends ServiceProvider
             debug($user->role->value === 'admin');
             return $user->role->value === 'admin';
         });
+
+        User::observe(\App\Observers\UserObserver::class);
     }
 }

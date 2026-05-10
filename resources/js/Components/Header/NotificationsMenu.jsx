@@ -17,9 +17,9 @@ import CloseIcon from '@mui/icons-material/Close';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // Иконка календаря
 
+export default function NotificationsMenu({ user, notifications }) {
 
-export default function NotificationsMenu({ user }) {
-
+    const unreadCount = notifications.filter(n => !n.read).length;
     const [isOpen, setIsOpen] = useState(false); // Стейт для модального окна (открыто/закрыто)
 
     // Стейты для фильтров
@@ -29,15 +29,6 @@ export default function NotificationsMenu({ user }) {
     const [selectedDate, setSelectedDate] = useState(null);
     const [calendarAnchorEl, setCalendarAnchorEl] = useState(null);
     const isCalendarOpen = Boolean(calendarAnchorEl);
-
-    const [notifications, setNotifications] = useState([
-        { id: 1, title: 'Нове завдання', text: 'Текст або опис повідомлення...', read: false, time: '10:30', date: '2026-04-16' },
-        { id: 2, title: 'Дедлайн завдання', text: 'Текст або опис повідомлення...', read: true, time: '15:00', date: '2026-04-18' },
-        { id: 3, title: 'Нова оцінка', text: 'Ви отримали 5 за тест з математики.', read: false, time: '09:00', date: '2026-04-19' },
-        { id: 4, title: 'Нова оцінка 2', text: 'Ви отримали 5 за тест з математики.', read: false, time: '09:00', date: '2026-05-01' },
-        { id: 5, title: 'Нова оцінка 3', text: 'Ви отримали 5 за тест з математики.', read: false, time: '12:00', date: '2026-04-28' },
-        { id: 6, title: 'Нова оцінка 4', text: 'Ви отримали 5 за тест з математики.', read: false, time: '10:00', date: '2026-04-30' },
-    ]);
 
     // Логика фильтрации
     const filtered = notifications.filter(n => {
@@ -54,7 +45,7 @@ export default function NotificationsMenu({ user }) {
     return (
         <>
             <IconButton size="large" color="inherit" onClick={() => setIsOpen(true)}>
-                <Badge badgeContent={notifications.filter(n => !n.read).length} color="error">
+                <Badge badgeContent={unreadCount} color="error">
                     <NotificationsIcon />
                 </Badge>
             </IconButton>
@@ -158,7 +149,7 @@ export default function NotificationsMenu({ user }) {
                     </Popover>
 
                     {/* КАРТОЧКА УВЕДОМЛЕНИЯ */}
-                    <NotificationItem notifications={filtered} />
+                    <NotificationItem notifications={filtered} isFiltered={statusFilter !== 'all' || selectedDate} />
 
                 </DialogContent>
             </Dialog>

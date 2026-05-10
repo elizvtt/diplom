@@ -42,7 +42,7 @@ export default function Auth() {
 
     // валидация
     const validateData = () => {
-        console.log('data: ', data);
+        // console.log('data: ', data);
 
         let newErrors = {};
 
@@ -53,7 +53,6 @@ export default function Auth() {
         const latinLettersRegex = /[а-яА-ЯёЁіІїЇєЄґҐ]/;
         
         const hasDigits = /\d/;
-
         
         // Валидация Email
         const emailError = [
@@ -63,36 +62,38 @@ export default function Auth() {
 
         if (emailError) newErrors.email = emailError;
 
-        // Валидация пароля
-        const passwordError = [
-            { hasError: !data.password, msg: "Введіть пароль" },
-            { hasError: data.password?.length < 6, msg: "Має містити не менше 6 символів" },
-            { hasError: !smallLetterRegex.test(data.password), msg: "Додайте хоча б одну малу англійську літеру" },
-            { hasError: !bigLetterRegex.test(data.password), msg: "Додайте хоча б одну велику англійську літеру" },
-            { hasError: !spicialCharsRegex.test(data.password), msg: "Додайте хоча б один спецсимвол" },
-            { hasError: latinLettersRegex.test(data.password), msg: "Може містити лише літери латинського алфавіту" }
-        ].find(rule => rule.hasError)?.msg;
-
-        if (passwordError) newErrors.password = passwordError;
-
-
-        // Валидация полей Регистрации
-        if (!isLogin) {
+        if (isLogin) {
+            if (!data.password) newErrors.password = "Введіть пароль";
+    
+        } else {
+            // Валидация пароля
+            const passwordError = [
+                { hasError: !data.password, msg: "Введіть пароль" },
+                { hasError: data.password?.length < 6, msg: "Має містити не менше 6 символів" },
+                { hasError: !smallLetterRegex.test(data.password), msg: "Додайте хоча б одну малу англійську літеру" },
+                { hasError: !bigLetterRegex.test(data.password), msg: "Додайте хоча б одну велику англійську літеру" },
+                { hasError: !spicialCharsRegex.test(data.password), msg: "Додайте хоча б один спецсимвол" },
+                { hasError: latinLettersRegex.test(data.password), msg: "Може містити лише літери латинського алфавіту" }
+            ].find(rule => rule.hasError)?.msg;
+    
+            if (passwordError) newErrors.password = passwordError;
 
             // Проверка имени: не пустое и нет циф в имени
             const nameError = [
                 { hasError: !data.name?.trim(), msg: "Введіть ім'я" },
                 { hasError: hasDigits.test(data.name), msg: "Не може містити цифри" }
             ].find(rule => rule.hasError)?.msg;
-            if (nameError) newErrors.name = nameError;
 
+            if (nameError) newErrors.name = nameError;
+    
             // Проверка фамилии: не пустое и нет цифр
             const surnameError = [
                 { hasError: !data.surname?.trim(), msg: "Введіть прізвище" },
                 { hasError: hasDigits.test(data.surname), msg: "Не може містити цифри" }
             ].find(rule => rule.hasError)?.msg;
+            
             if (surnameError) newErrors.surname = surnameError;
-
+    
             if (!data.role) newErrors.role = "Оберіть роль";
         }
 
