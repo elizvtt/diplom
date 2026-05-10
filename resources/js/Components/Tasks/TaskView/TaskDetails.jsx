@@ -231,7 +231,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 import { 
-    Box, Typography, IconButton, Avatar,
+    Box, Typography, IconButton, Avatar, InputLabel,
     AvatarGroup, Tooltip, LinearProgress, Autocomplete,
     Button, Stack, TextField, Select, MenuItem, FormControl, Slider
 } from '@mui/material';
@@ -243,7 +243,7 @@ import CheckIcon from '@mui/icons-material/Check';
 
 import { priorityColors } from '@/utils/constants';
 
-export default function TaskDetails({ task, project, priorities, teamMembers, data, setData, editingField, setEditingField, handleSave }) {
+export default function TaskDetails({ task, project, priorities, teamMembers, reminders, data, setData, editingField, setEditingField, handleSave }) {
     
     console.log('data: ', data);
 
@@ -264,6 +264,29 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
         handleSave();
         setEditingField(null);
     };
+    
+    const getAvailableReminders = () => {
+        // Якщо дата кінця не обрана, дозволяємо тільки "Немає"
+        if (!data.date_end) return reminders.filter(r => r.id === 'none');
+
+        const now = dayjs(); // Поточний час
+        const deadline = dayjs(data.date_end);
+        const diffInHours = deadline.diff(now, 'hour');
+
+        return reminders.filter(rem => {
+            if (rem.id === 'none') return true;
+
+            // Логіка обмежень (в годинах)
+            switch (rem.id) {
+                case '1_hour':  return diffInHours >= 1;
+                case '1_day':   return diffInHours >= 24;
+                case '2_days':  return diffInHours >= 48;
+                case '1_week':  return diffInHours >= 168; // 24 * 7
+                default: return true;
+            }
+        });
+    };
+    const availableReminders = getAvailableReminders();
 
     return (
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>            
@@ -477,14 +500,64 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
                     </Box>
                 </Box>
 
-                {/* НАГАДУВАННЯ (Без змін, тільки стилістика) */}
+                {/* НАГАДУВАННЯ */}
                 <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 40 }}>
-                    <Typography variant="body2" sx={{ width: 140, flexShrink: 0, fontWeight: 500 }}>Нагадування:</Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <NotificationsActiveIcon sx={{ fontSize: 18, color: data.reminder ? '#ff00b7' : 'action.disabled' }} />
-                        <Typography variant="body2">{data.reminder || 'Вимкнено'}</Typography>
-                    </Box>
+                    <Typography
+                        variant="body2"
+                        sx={{ width: 140, flexShrink: 0, fontWeight: 500 }}
+                    >
+                        Нагадування:
+                    </Typography>
+
+                    {editingField === 'reminder' ? (
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: '100%', px: 1 }}>
+                            <Tooltip title={!data.date_end ? 'Спочатку встановіть дату завершення' : ''}>
+                                <FormControl
+                                    size="small"
+                                    color="secondary"
+                                    sx={{ width: '100%' }}
+                                    disabled={!data.date_end}
+                                >
+                                    <InputLabel id="notif-select-label">Нагадування</InputLabel>
+
+                                    <Select
+                                        labelId="notif-select-label"
+                                        label="Нагадування"
+                                        value={data.reminder || 'none'}
+                                        onChange={(e) => {
+                                            setData('reminder', e.target.value);
+                                            handleSave();
+                                            setEditingField(null);
+                                        }}
+                                    >
+                                        {availableReminders.map((rem) => (
+                                            <MenuItem key={rem.id} value={rem.id}>
+                                                {rem.label}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Tooltip>
+                            <IconButton size="small" color="primary" onClick={applySave}><CheckIcon /></IconButton>
+                        </Box>
+                    ) : (
+                        <Box
+                            sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+                            onClick={() => setEditingField('reminder')}
+                        >
+                            <NotificationsActiveIcon
+                                sx={{
+                                    fontSize: 18,
+                                    color: data.reminder ? '#ff00b7' : 'action.disabled'
+                                }}
+                            />
+                            <Typography variant="body2">
+                                {data.reminder || 'Вимкнено'}
+                            </Typography>
+                        </Box>
+                    )}
                 </Box>
+
 
                 {/* ПРОГРЕС */}
                 <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 40 }}>

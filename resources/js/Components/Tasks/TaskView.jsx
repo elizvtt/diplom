@@ -15,7 +15,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 import { statusColors } from '@/utils/constants';
 
-export default function TaskView({ task, project, teamMembers, priorities, statuses, open, onClose, onStatusChange }) {
+export default function TaskView({ task, project, teamMembers, priorities, statuses, reminders, open, onClose, onStatusChange }) {
     if (!task) return null;
     const { auth } = usePage().props;
     console.log('%c [TaskView] task: ', 'color: orange;', task);
@@ -118,6 +118,7 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
                         project={project}
                         priorities={priorities}
                         teamMembers={teamMembers}
+                        reminders={reminders}
                         data={data}
                         setData={setData}
                         editingField={editingField}

@@ -198,7 +198,8 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                 // task={selectedTask}
                 task={project.tasks.find(t => t.id === selectedTask?.id)}
                 project={project}
-                teamMembers={teamMembers}                
+                teamMembers={teamMembers} 
+                reminders={reminders}    
                 priorities={priorities}
                 statuses={statuses}
                 open={isDetailsModalOpen} 
