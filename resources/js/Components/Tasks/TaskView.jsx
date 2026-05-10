@@ -29,6 +29,8 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
     const { data, setData, processing } = useForm({
         title: task.title || '',
         description: task.description?.text || '',
+        date_start: task.date_start || null,
+        date_end: task.date_end || null,
         priority: task.priority || '',
         assignees: task.assignees || [],
         progress: task.progress || 0,

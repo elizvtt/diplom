@@ -74,8 +74,10 @@ const MenuBar = ({ editor }) => {
     );
 };
 
-// 2. Головний компонент редактора
+// Головний компонент редактора
 export default function TipTapEditor({ value, onChange }) {
+    // console.log('[TipTapEditor] value: ', value);
+    // console.log('[TipTapEditor] onChange: ', onChange);
     // Стейт для відслідковування, чи активний зараз редактор
     const [isFocused, setIsFocused] = useState(false);
 

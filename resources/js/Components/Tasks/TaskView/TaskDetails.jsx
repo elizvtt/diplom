@@ -221,10 +221,14 @@
 //     )
 // }
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState  } from 'react';
 import TipTapEditor from '@/Components/Editors/TipTapEditor';
 import DOMPurify from 'dompurify';
 import dayjs from 'dayjs';
+import 'dayjs/locale/uk'; // Для української локалізації
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 import { 
     Box, Typography, IconButton, Avatar,
@@ -236,12 +240,16 @@ import FlagIcon from '@mui/icons-material/Flag';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
 
 import { priorityColors } from '@/utils/constants';
 
 export default function TaskDetails({ task, project, priorities, teamMembers, data, setData, editingField, setEditingField, handleSave }) {
     
+    console.log('data: ', data);
+
+    const [openStart, setOpenStart] = useState(false);
+    const [openEnd, setOpenEnd] = useState(false);
+
     useEffect(() => {
         const handler = (e) => {
             if (e.key === 'Escape') setEditingField(null);
@@ -250,16 +258,6 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
         return () => window.removeEventListener('keydown', handler);
     }, []);
 
-    // Універсальне отримання тексту опису
-    const descriptionContent = typeof data.description === 'object' 
-        ? data.description?.text || '' 
-        : data.description || '';
-
-    // Функція для форматування дати у формат YYYY-MM-DD для input type="date"
-    // const formatDateForInput = (dateString) => {
-    //     if (!dateString) return '';
-    //     return new Date(dateString).toISOString().split('T')[0];
-    // };
 
     // Функція для завершення редагування та збереження
     const applySave = () => {
@@ -274,17 +272,11 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
                 {editingField === 'description' ? (
                     <Box>
                         <TipTapEditor
-                            content={descriptionContent}
-                            onChange={(val) => {
-                                // Зберігаємо формат, у якому прийшли дані
-                                const newDesc = typeof data.description === 'object' 
-                                    ? { ...data.description, text: val } 
-                                    : val;
-                                setData('description', newDesc);
-                            }}
+                            value={data.description}
+                            onChange={(html) => setData('description', html)}
                         />
 
-                        <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                             <Button onClick={applySave} variant="contained" size="small">
                                 Зберегти
                             </Button>
@@ -300,8 +292,6 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
                             cursor: 'pointer',
                             p: 1,
                             borderRadius: 1,
-                            transition: '0.2s',
-                            '&:hover': { bgcolor: '#f8fafc', outline: '1px dashed #cbd5e1' }
                         }}
                     >
                         <Typography
@@ -312,7 +302,7 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
                                 lineHeight: 1.6
                             }}
                             dangerouslySetInnerHTML={{
-                                __html: DOMPurify.sanitize(descriptionContent || 'Опис відсутній. Натисніть, щоб додати...')
+                                __html: DOMPurify.sanitize(data.description || 'Опис відсутній. Натисніть, щоб додати...')
                             }}
                         />
                     </Box>
@@ -320,7 +310,7 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
             </Box>
 
             {/* ХАРАКТЕРИСТИКИ */}
-            <Stack spacing={2.5} sx={{ mt: 3, p: 2, borderRadius: 3, bgcolor: '#f9c5ef20', color: '#000' }}>
+            <Stack spacing={2.5} sx={{ mt: 2, p: 2, borderRadius: 3, bgcolor: '#f9c5ef20', color: '#000' }}>
                 
                 {/* ВИКОНАВЦІ */}
                 <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 40 }}>
@@ -399,20 +389,82 @@ export default function TaskDetails({ task, project, priorities, teamMembers, da
                         <CalendarMonthIcon sx={{ fontSize: 18, color: 'action.active' }} />
                         {editingField === 'dates' ? (
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <TextField 
-                                    type="date" 
-                                    size="small" 
-                                    value={data.date_start} 
-                                    onChange={(e) => setData('date_start', e.target.value)} 
-                                />
-                                <Typography>-</Typography>
-                                <TextField 
-                                    type="date" 
-                                    size="small" 
-                                    value={data.date_end} 
-                                    onChange={(e) => setData('date_end', e.target.value)} 
-                                />
-                                <IconButton size="small" color="primary" onClick={applySave}><CheckIcon /></IconButton>
+                                <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="uk">
+                                    <Box 
+                                        sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 1,
+                                            bgcolor: '#fff',
+                                            borderRadius: 1
+                                        }}
+                                    >
+                                        {/* Дата початку */}
+                                        <DateTimePicker
+                                            format="DD.MM.YY HH:mm"
+                                            ampm={false}
+                                            value={dayjs(data.date_start)}
+                                            onChange={(newValue) => setData('date_start', newValue ? newValue.format('YYYY-MM-DD HH:mm:ss') : null)}
+                                            open={openStart}
+                                            onClose={() => setOpenStart(false)}
+                                            slotProps={{ 
+                                                textField: {
+                                                    onClick: () => setOpenStart(true),
+                                                    size: 'small',
+                                                    sx: { 
+                                                        width: '112px',
+                                                        '& .MuiPickersInputBase-root': {
+                                                            fontSize: '0.85rem',
+                                                            padding: '0 8px',
+                                                        },
+                                                        '& .MuiInputAdornment-root': { display: 'none' }
+                                                    }
+                                                },
+                                                actionBar: {
+                                                    actions: ['today'],
+                                                    sx: { '& .MuiButton-root':{ color: 'secondary.main'}}
+                                                }
+                                            }}
+                                        />
+                                        
+                                        {/* Розділювач */}
+                                        <Typography color="text.secondary" sx={{ fontWeight: 'bold' }}>-</Typography>
+                                        
+                                        {/* Дата кінця */}
+                                        <DateTimePicker
+                                            format="DD.MM.YY HH:mm"
+                                            ampm={false}
+                                            value={dayjs(data.date_end)}
+                                            onChange={(newValue) => setData('date_end', newValue ? newValue.format('YYYY-MM-DD HH:mm:ss') : null)}
+                                            open={openEnd}
+                                            onClose={() => setOpenEnd(false)}
+                                            slotProps={{ 
+                                                textField: { 
+                                                    onClick: () => setOpenEnd(true),
+                                                    size: 'small', 
+                                                    placeholder: 'Кінець',
+                                                    sx: {
+                                                        width: '112px',
+                                                        '& .MuiPickersInputBase-root': {
+                                                            fontSize: '0.85rem',
+                                                            padding: '0 8px',
+                                                        },
+                                                        '& .MuiInputAdornment-root': { display: 'none' }
+                                                    }
+                                                },
+                                                actionBar: {
+                                                    actions: ['today'],
+                                                    sx: { '& .MuiButton-root':{ color: 'secondary.main'}}
+                                                }
+                                            }}
+                                        />
+                                    </Box>
+                                </LocalizationProvider>
+                                
+                                {/* Кнопка збереження */}
+                                <IconButton size="small" color="primary" onClick={applySave}>
+                                    <CheckIcon />
+                                </IconButton>
                             </Box>
                         ) : (
                             <Box onClick={() => setEditingField('dates')} sx={{ cursor: 'pointer', flexGrow: 1 }}>
