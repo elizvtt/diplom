@@ -8,7 +8,7 @@ import {
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
-export default function ListView({ tasks, statuses, priorities, onDrop }) {
+export default function ListView({ tasks, statuses, priorities, reminders, onDrop, onTaskClick, onDeleteTask}) {
     const [collapsedGroups, setCollapsedGroups] = useState({});
 
     const toggleGroup = (statusId) => {
@@ -77,10 +77,13 @@ export default function ListView({ tasks, statuses, priorities, onDrop }) {
                                 {/* Виводимо завдання цього статусу через новий компонент */}
                                 {!isCollapsed && statusTasks.map(task => (
                                     <TaskListItem 
+                                        key={task.id}
                                         task={task} 
                                         priorities={priorities}
                                         statuses={statuses}
-                                        onStatusChange={onDrop} 
+                                        onStatusChange={onDrop}
+                                        onClick={() => onTaskClick(task)}
+                                        onDeleteTask={onDeleteTask}
                                     />
                                 ))}
                             </React.Fragment>

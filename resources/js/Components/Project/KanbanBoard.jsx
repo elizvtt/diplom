@@ -3,7 +3,7 @@ import TaskCard from '@/Components/Tasks/TaskCard';
 import { statusColors } from '@/utils/constants';
 import { Box, Paper, Typography } from '@mui/material';
 
-export default function KanbanBoard({ tasks, statuses, priorities, reminders, onDragStart, onDragOver, onDrop, onTaskClick }) {
+export default function KanbanBoard({ tasks, statuses, priorities, reminders, onDragStart, onDragOver, onDrop, onTaskClick, onDeleteTask }) {
 
     const [openedSubtasks, setOpenedSubtasks] = useState({});
 
@@ -84,7 +84,7 @@ export default function KanbanBoard({ tasks, statuses, priorities, reminders, on
                                     onDragStart={onDragStart}
                                     onDrop={onDrop}
                                     onClick={() => onTaskClick(task)}
-                                    // onTaskComplete={onTaskComplete}
+                                    onDeleteTask={onDeleteTask}
                                 />
                         ))}
                     </Box>

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { router } from '@inertiajs/react';
 import DOMPurify from 'dompurify';
 import { priorityColors } from '@/utils/constants';
 
 import {
     Box, Card, CardContent, Typography, IconButton,
-    Tooltip, Avatar, AvatarGroup, Collapse, Divider
+    Tooltip, Avatar, AvatarGroup, Collapse, Divider,
+    Menu, MenuItem, ListItemIcon, ListItemText,
 } from '@mui/material';
 
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -15,6 +17,8 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import FlagIcon from '@mui/icons-material/Flag';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const getReminderDate = (task) => {
     if (!task.reminder || !task.date_end) return null;
@@ -42,15 +46,51 @@ const getReminderDate = (task) => {
     return endDate;
 };
 
-export default function TaskCard({ task, priorities, openedSubtasks, toggleSubtasks, onDragStart, onDrop, onClick }) {
+export default function TaskCard({ task, priorities, openedSubtasks, toggleSubtasks, onDragStart, onDrop, onClick, onDeleteTask }) {
     const isOpen = openedSubtasks[task.id];
-    // console.log('[TaskCard] task: ', task)
-    // console.log('[TaskCard] priorities: ', priorities)
 
     const priorityConfig = priorityColors[task.priority];
     const reminderDate = getReminderDate(task);
 
     const priority = priorities.find(p => p.id === task.priority);
+    // Стан для випадаючого меню
+    const [anchorEl, setAnchorEl] = useState(null);
+    const menuOpen = Boolean(anchorEl);
+
+    // Відкриття меню
+    const handleMenuOpen = (e) => {
+        e.stopPropagation(); // Щоб не спрацьовував клік по самій картці
+        setAnchorEl(e.currentTarget);
+    };
+
+    // Закриття меню
+    const handleMenuClose = (e) => {
+        if (e) e.stopPropagation();
+        setAnchorEl(null);
+    };
+
+    // Обробник "Редагувати"
+    const handleEdit = (e) => {
+        e.stopPropagation();
+        handleMenuClose();
+        if (onClick) onClick(); // Викликаємо функцію відкриття TaskView з батьківського компонента
+    };
+
+    // Обробник "Видалити"
+    const handleDelete = (e) => {
+        e.stopPropagation();
+        handleMenuClose();
+        
+        if (window.confirm('Ви впевнені, що хочете видалити це завдання?')) {
+            // Відправляємо запит на видалення
+            router.post(`/tasks/${task.id}/delete`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (onDeleteTask) onDeleteTask(task.id);
+                }
+            });
+        }
+    };
 
     return (
         <Card
@@ -106,7 +146,8 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
                     <IconButton
                         className="task-options"
                         size="small"
-                        onClick={(e) => e.stopPropagation()}
+                        // onClick={(e) => {e.stopPropagation(); handleMenuOpen}}
+                        onClick={handleMenuOpen}
                         sx={{
                             opacity: 0,
                             transition: 'opacity 0.2s',
@@ -115,6 +156,31 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
                     >
                         <MoreVertIcon fontSize="small" />
                     </IconButton>
+                    <Menu 
+                        anchorEl={anchorEl}
+                        open={menuOpen}
+                        onClose={handleMenuClose}
+                        onClick={(e) => e.stopPropagation()} // Блокуємо кліки всередині меню
+                        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                        PaperProps={{
+                            elevation: 3,
+                            sx: { minWidth: 150, borderRadius: 2, mt: 0.5 }
+                        }}
+                    >
+                        <MenuItem onClick={handleEdit}>
+                            <ListItemIcon>
+                                <EditIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText>Редагувати</ListItemText>
+                        </MenuItem>
+                        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+                            <ListItemIcon>
+                                <DeleteIcon fontSize="small" color="error" />
+                            </ListItemIcon>
+                            <ListItemText>Видалити</ListItemText>
+                        </MenuItem>
+                    </Menu>
                 </Box>
 
                 {/* DESCRIPTION */}

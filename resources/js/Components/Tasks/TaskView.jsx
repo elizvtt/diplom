@@ -17,16 +17,13 @@ import { statusColors } from '@/utils/constants';
 
 export default function TaskView({ task, project, teamMembers, priorities, statuses, reminders, open, onClose, onStatusChange }) {
     if (!task) return null;
-    const { auth } = usePage().props;
     console.log('%c [TaskView] task: ', 'color: orange;', task);
-    // console.log('%c [TaskView] priorities: ', 'color: green;', priorities);
-    // console.log('%c [TaskView] statuses: ', 'color: blue;', statuses);
     console.log('[TaskView] project: ', project);
 
     const [currTab, setcurrTab] = useState('comments');
     const [editingField, setEditingField] = useState(null);
 
-    const { data, setData, processing } = useForm({
+    const { data, setData, post, processing, transform } = useForm({
         title: task.title || '',
         description: task.description?.text || '',
         date_start: task.date_start || null,
@@ -37,7 +34,12 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
     });
 
     const handleSave = () => {
-        router.post(`/tasks/${task.id}/update`, data, {
+        transform((data) => ({
+            ...data,
+            assignees: data.assignees ? data.assignees.map(user => user.id) : []
+        }));
+
+        post(`/tasks/${task.id}/update`, {
             preserveScroll: true,
             onSuccess: () => {
                 setEditingField(null);
@@ -124,6 +126,7 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
                         editingField={editingField}
                         setEditingField={setEditingField}
                         handleSave={handleSave}
+                        processing={processing}
                     />
                     
 

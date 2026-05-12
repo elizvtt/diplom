@@ -1,60 +1,94 @@
 import React, { useState } from 'react';
-import { priorityColors, statusColors } from '@/utils/constants';
-import {
-    Box, Table, TableBody, TableCell, TableRow,
-    IconButton, Typography, Avatar, AvatarGroup,
-    Tooltip, Chip, Collapse, LinearProgress,
-    Menu, MenuItem, ListItemIcon, ListItemText
+import { router } from '@inertiajs/react';
+import { statusColors, priorityColors } from '@/utils/constants';
+
+import { 
+    TableRow, TableCell, IconButton, Tooltip, Menu, MenuItem, 
+    ListItemIcon, ListItemText, Box, Typography, Chip, AvatarGroup, 
+    Avatar, LinearProgress, Collapse, Table, TableBody 
 } from '@mui/material';
 
-import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import FlagIcon from '@mui/icons-material/Flag';
+import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import FlagIcon from '@mui/icons-material/Flag';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CircleIcon from '@mui/icons-material/Circle';
 
 
-export default function TaskListItem({ task, statuses, priorities, onStatusChange }) {
+export default function TaskListItem({ task, statuses, priorities, onStatusChange, onClick, onDeleteTask }) {
     const [subtasksOpen, setSubtasksOpen] = useState(false);
     const priority = priorities.find(p => p.id === task.priority);
 
-    // Стейт для меню статусів
-    const [anchorEl, setAnchorEl] = useState(null);
-    const openMenu = Boolean(anchorEl);
+    // Стейт для ГОЛОВНОГО меню
+    const [optionsAnchor, setOptionsAnchor] = useState(null);
+    
+    // Стейт для МЕНЮ СТАТУСІВ
+    const [statusAnchor, setStatusAnchor] = useState(null);
 
-    // Відкриття меню
-    const handleMenuClick = (event) => {
-        event.stopPropagation(); // Щоб рядок не реагував на клік
-        setAnchorEl(event.currentTarget);
+    // --- ОБРОБНИКИ МЕНЮ РЕДАГУВАННЯ/ВИДАЛЕННЯ
+    const handleOptionsOpen = (e) => {
+        e.stopPropagation();
+        setOptionsAnchor(e.currentTarget);
     };
 
-    // Закриття меню
-    const handleMenuClose = (event) => {
-        event?.stopPropagation();
-        setAnchorEl(null);
+    const handleOptionsClose = (e) => {
+        if (e) e.stopPropagation();
+        setOptionsAnchor(null);
     };
 
-    // Вибір нового статусу
-    const handleStatusSelect = (event, newStatusId) => {
-        event.stopPropagation();
-        onStatusChange(null, newStatusId, task.id); // Відправляємо запит на сервер
-        handleMenuClose(); // Закриваємо меню
+    const handleEdit = (e) => {
+        e.stopPropagation();
+        handleOptionsClose();
+        if (onClick) onClick(); 
+    };
+
+    const handleDelete = (e) => {
+        e.stopPropagation();
+        handleOptionsClose();
+        
+        if (window.confirm('Ви впевнені, що хочете видалити це завдання?')) {
+            router.post(`/tasks/${task.id}/delete`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (onDeleteTask) onDeleteTask(task.id);
+                }
+            });
+        }
+    };
+
+    // --- ОБРОБНИКИ ДЛЯ СТАТУСУ (Зліва) ---
+    const handleStatusMenuOpen = (e) => {
+        e.stopPropagation();
+        setStatusAnchor(e.currentTarget); // Прив'язуємо меню до лівої іконки
+    };
+
+    const handleStatusMenuClose = (e) => {
+        if (e) e.stopPropagation();
+        setStatusAnchor(null);
+    };
+
+    const handleStatusSelect = (e, newStatusId) => {
+        e.stopPropagation();
+        onStatusChange(null, newStatusId, task.id);
+        handleStatusMenuClose(); 
     };
 
     return (
         <React.Fragment>
-            <TableRow hover sx={{ cursor: 'pointer', '&:hover .task-options': { opacity: 1 }, '& > *': { borderBottom: 'unset' } }} >
+            <TableRow hover onClick={onClick} sx={{ cursor: 'pointer', '&:hover .task-options': { opacity: 1 }, '& > *': { borderBottom: 'unset' } }} >
                 {/* '& > *' - Прибираємо лінію, якщо є підзадачі */}
                 {/* Кнопка Статусу завдання  */}
                 <TableCell padding="checkbox" sx={{ pl: 2 }}>
                     <Tooltip title="Змінити статус">
                         <IconButton
                             size="small"
-                            onClick={handleMenuClick}
+                            onClick={handleStatusMenuOpen}
                             sx={{ color: task.status === 'done' ? 'success.main' : 'action.disabled' }}
                         >
                             {task.status === 'done' ? <CheckCircleIcon /> : <CheckCircleOutlineOutlinedIcon />}
@@ -63,14 +97,13 @@ export default function TaskListItem({ task, statuses, priorities, onStatusChang
 
                     {/* меню статусів */}
                     <Menu
-                        anchorEl={anchorEl}
-                        open={openMenu}
-                        onClose={handleMenuClose}
+                        anchorEl={statusAnchor}
+                        open={Boolean(statusAnchor)}
+                        onClose={handleStatusMenuClose}
                         onClick={(e) => e.stopPropagation()} // Забороняємо кліку пробиватися до рядка
-                        PaperProps={{
-                            elevation: 3,
-                            sx: { minWidth: 150, borderRadius: 2, mt: 0.5 }
-                        }}
+                        transformOrigin={{ horizontal: 'left', vertical: 'top' }}
+                        anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+                        PaperProps={{ elevation: 3, sx: { minWidth: 150, borderRadius: 2, mt: 0.5 }}}
                     >
                         {statuses.map((status) => (
                             <MenuItem 
@@ -169,13 +202,43 @@ export default function TaskListItem({ task, statuses, priorities, onStatusChang
 
                 {/* 7. Опції */}
                 <TableCell align="right" sx={{ pr: 2 }}>
-                    <IconButton className="task-options" size="small" sx={{ opacity: 0, transition: '0.2s' }}>
+                    <IconButton
+                        className="task-options"
+                        size="small"
+                        onClick={handleOptionsOpen}
+                        sx={{ opacity: 0, transition: '0.2s' }}
+                    >
                         <MoreVertIcon fontSize="small" />
                     </IconButton>
+                    <Menu 
+                        anchorEl={optionsAnchor}
+                        open={Boolean(optionsAnchor)}
+                        onClose={handleOptionsClose}
+                        onClick={(e) => e.stopPropagation()} // Блокуємо кліки всередині меню
+                        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                        PaperProps={{
+                            elevation: 3,
+                            sx: { minWidth: 150, borderRadius: 2, mt: 0.5 }
+                        }}
+                    >
+                        <MenuItem onClick={handleEdit}>
+                            <ListItemIcon>
+                                <EditIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText>Редагувати</ListItemText>
+                        </MenuItem>
+                        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+                            <ListItemIcon>
+                                <DeleteIcon fontSize="small" color="error" />
+                            </ListItemIcon>
+                            <ListItemText>Видалити</ListItemText>
+                        </MenuItem>
+                    </Menu>
                 </TableCell>
             </TableRow>
 
-            {/* РЯДОК ДЛЯ ПІДЗАДАЧ (Collapse) */}
+            {/* РЯДОК ДЛЯ ПІДЗАДАЧ */}
             <TableRow>
                 <TableCell style={{ paddingBottom: 0, paddingTop: 0, border: 'none' }} colSpan={7}>
                     <Collapse in={subtasksOpen} timeout="auto" unmountOnExit>

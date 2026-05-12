@@ -1,226 +1,3 @@
-// import React, { useEffect } from 'react';
-// import TipTapEditor from '@/Components/Editors/TipTapEditor';
-// import DOMPurify from 'dompurify';
-
-// import { 
-//     Box, Typography, IconButton, Avatar,
-//     AvatarGroup, Tooltip, LinearProgress, Autocomplete,
-//     Button, Stack, TextField, Select, MenuItem, FormControl
-// } from '@mui/material';
-
-// import FlagIcon from '@mui/icons-material/Flag';
-// import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-// import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-// import EditIcon from '@mui/icons-material/Edit';
-
-// import { priorityColors} from '@/utils/constants';
-
-// export default function TaskDetails({ task, project, priorities, teamMembers, data, setData, editingField, setEditingField, handleSave }) {
-    
-//     const startEdit = (field) => {
-//         setEditingField(field);
-//     };
-
-//     useEffect(() => {
-//         const handler = (e) => {
-//             if (e.key === 'Escape') setEditingField(null);
-//         };
-
-//         window.addEventListener('keydown', handler);
-//         return () => window.removeEventListener('keydown', handler);
-//     }, []);
-
-//     const handleChangeAndSave = (field, value) => {
-//         setData(field, value);
-//         setTimeout(() => {
-//             handleSave();
-//             setEditingField(null);
-//         }, 0);
-//     };
-
-
-//     return (
-//         <Box sx={{ flexGrow: 1, minWidth: 0 }}>            
-//             {/* Опис */}
-//             <Box>
-//                 {editingField === 'description' ? (
-//                     <Box>
-//                         <TipTapEditor
-//                             content={data.description.text}
-//                             onChange={(val) => {setData('description', { ...data.description, text: val });}}
-//                         />
-
-//                         <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-//                             <Button
-//                                 onClick={() => {
-//                                     handleSave();
-//                                     setEditingField(null);
-//                                 }}
-//                                 variant="contained"
-//                                 size="small"
-//                             >
-//                                 Save
-//                             </Button>
-
-//                             <Button
-//                                 onClick={() => setEditingField(null)}
-//                                 variant="text"
-//                                 size="small"
-//                             >
-//                                 Cancel
-//                             </Button>
-//                         </Box>
-//                     </Box>
-//                 ) : (
-//                     <Box
-//                         onClick={() => {
-//                             setEditingField('description');
-//                         }}
-//                         sx={{
-//                             cursor: 'pointer',
-//                             '&:hover': { bgcolor: '#f8fafc', borderRadius: 1 }
-//                         }}
-//                     >
-//                         <Typography
-//                             variant="body1"
-//                             sx={{
-//                                 color: 'text.primary',
-//                                 '& p': { margin: 0 },
-//                                 '& ol': { margin: 0 },
-//                                 lineHeight: 1.6
-//                             }}
-//                             dangerouslySetInnerHTML={{
-//                                 __html: DOMPurify.sanitize(
-//                                     data.description || ''
-//                                 )
-//                             }}
-//                         />
-//                     </Box>
-//                 )}
-//             </Box>
-
-//             {/* ХАРАКТЕРИСТИКИ */}
-//             <Stack
-//                 spacing={2}
-//                 sx={{ 
-//                     p: 1.5,
-//                     borderRadius: 2,
-//                     bgcolor: '#f9c5ef30',
-//                     color: '#000'
-//                 }}
-//             >
-                
-//                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                     <Typography variant="body2" sx={{ width: 140, flexShrink: 0 }}>Виконавці:</Typography>
-                    
-//                     {/* {task.assignees?.length > 0 ? ( */}
-//                         {editingField === 'assignees' ? (
-//                             <Autocomplete
-//                                 multiple
-//                                 options={teamMembers || []}
-//                                 value={data.assignees || []}
-//                                 autoFocus
-//                                 onChange={(e, value) => handleChangeAndSave('assignees', value)}
-//                                 onBlur={() => {
-//                                     handleSave();
-//                                     setEditingField(null);
-//                                 }}
-//                                 getOptionLabel={(option) => option.name}
-//                                 isOptionEqualToValue={(option, value) => option.id === value.id}
-//                                 renderInput={(params) => (
-//                                     <TextField {...params} size="small" />
-//                                 )}
-//                             />
-//                         ) : (
-//                             <Box 
-//                                 onClick={() => setEditingField('assignees')} 
-//                                 sx={{ cursor: 'pointer', flexGrow: 1, display: 'flex', alignItems: 'center', minHeight: 24 }}
-//                             >
-//                                 {data.assignees?.length > 0 ? (
-//                                     <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 26, height: 26, fontSize: '0.8rem' } }}>
-//                                         {data.assignees.map((u) => (
-//                                             <Tooltip key={u.id} title={u.full_name}>
-//                                                 <Avatar>{u.full_name?.[0]}</Avatar>
-//                                             </Tooltip>
-//                                         ))}
-//                                     </AvatarGroup>
-//                                 ) : (
-//                                     <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-//                                         Не призначено
-//                                     </Typography>
-//                                 )}
-//                             </Box>
-//                         )}
-
-                        
-//                     {/* ) : <Typography variant="body2">Не призначено</Typography>} */}
-//                 </Box>
-
-//                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                     <Typography variant="body2" sx={{ width: 140,  flexShrink: 0 }}>Пріоритет:</Typography>
-//                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-//                         <FlagIcon sx={{ color: priorityColors[task.priority], fontSize: 18 }} />
-//                         {editingField === 'priority' ? (
-//                             <FormControl size="small">
-//                                 <Select
-//                                     value={data.priority}
-//                                     onChange={(e) => handleChangeAndSave('priority', e.target.value)}
-//                                     autoFocus
-//                                 >
-//                                     {priorities.map((p) => (
-//                                         <MenuItem key={p.id} value={p.id}>
-//                                             {p.label}
-//                                         </MenuItem>
-//                                     ))}
-//                                 </Select>
-//                             </FormControl>
-//                         ) : (
-//                             <Box
-//                                 onClick={() => setEditingField('priority')}
-//                                 sx={{ cursor: 'pointer' }}
-//                             >
-//                                 {priorities.find(p => p.id === data.priority)?.label}
-//                             </Box>
-//                         )}
-//                     </Box>
-//                 </Box>
-
-//                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                     <Typography variant="body2" sx={{ width: 140,  flexShrink: 0 }}>Терміни:</Typography>
-//                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-//                         <CalendarMonthIcon sx={{ fontSize: 18, color: 'action.active' }} />
-//                         <Typography variant="body2">
-//                             {new Date(task.date_start).toLocaleDateString('uk-UA')} - {task.date_end ? new Date(task.date_end).toLocaleDateString('uk-UA') : 'не вказано'}
-//                         </Typography>
-//                     </Box>
-//                 </Box>
-
-//                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                     <Typography variant="body2" sx={{ width: 140,  flexShrink: 0 }}>Нагадування:</Typography>
-//                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-//                         <NotificationsActiveIcon sx={{ fontSize: 18, color: task.reminder ? '#ff00b7' : 'action.disabled' }} />
-//                         <Typography variant="body2">{task.reminder || 'Вимкнено'}</Typography>
-//                     </Box>
-//                 </Box>
-
-//                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-//                     <Typography variant="body2" sx={{ width: 140,  flexShrink: 0 }}>Прогрес:</Typography>
-//                     <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-//                         <LinearProgress 
-//                             variant="determinate" 
-//                             value={task.progress}
-//                             color="secondary"
-//                             sx={{ flexGrow: 1, height: 6, borderRadius: 5 }}
-//                         />
-//                         <Typography variant="caption" fontWeight="bold">{task.progress}%</Typography>
-//                     </Box>
-//                 </Box>
-//             </Stack>
-//         </Box>
-
-//     )
-// }
-
 import React, { useEffect, useState  } from 'react';
 import TipTapEditor from '@/Components/Editors/TipTapEditor';
 import DOMPurify from 'dompurify';
@@ -233,7 +10,8 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { 
     Box, Typography, IconButton, Avatar, InputLabel,
     AvatarGroup, Tooltip, LinearProgress, Autocomplete,
-    Button, Stack, TextField, Select, MenuItem, FormControl, Slider
+    Button, Stack, TextField, Select, MenuItem, FormControl,
+    Slider, CircularProgress,
 } from '@mui/material';
 
 import FlagIcon from '@mui/icons-material/Flag';
@@ -243,7 +21,7 @@ import CheckIcon from '@mui/icons-material/Check';
 
 import { priorityColors } from '@/utils/constants';
 
-export default function TaskDetails({ task, project, priorities, teamMembers, reminders, data, setData, editingField, setEditingField, handleSave }) {
+export default function TaskDetails({ task, project, priorities, teamMembers, reminders, data, setData, editingField, setEditingField, handleSave, processing }) {
     
     console.log('data: ', data);
 
@@ -252,17 +30,16 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
 
     useEffect(() => {
         const handler = (e) => {
-            if (e.key === 'Escape') setEditingField(null);
+            if (e.key === 'Escape' && !processing) setEditingField(null);
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, []);
+    }, [processing]);
 
 
     // Функція для завершення редагування та збереження
     const applySave = () => {
         handleSave();
-        setEditingField(null);
     };
     
     const getAvailableReminders = () => {
@@ -275,13 +52,12 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
 
         return reminders.filter(rem => {
             if (rem.id === 'none') return true;
-
-            // Логіка обмежень (в годинах)
+            // Логіка обмежень
             switch (rem.id) {
                 case '1_hour':  return diffInHours >= 1;
                 case '1_day':   return diffInHours >= 24;
                 case '2_days':  return diffInHours >= 48;
-                case '1_week':  return diffInHours >= 168; // 24 * 7
+                case '1_week':  return diffInHours >= 168;
                 default: return true;
             }
         });
@@ -294,25 +70,27 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
             <Box>
                 {editingField === 'description' ? (
                     <Box>
-                        <TipTapEditor
-                            value={data.description}
-                            onChange={(html) => setData('description', html)}
-                        />
+                        <Box sx={{ pointerEvents: processing ? 'none' : 'auto', opacity: processing ? 0.7 : 1 }}>
+                            <TipTapEditor
+                                value={data.description}
+                                onChange={(html) => setData('description', html)}
+                            />
+                        </Box>
 
                         <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
-                            <Button onClick={applySave} variant="contained" size="small">
-                                Зберегти
+                            <Button onClick={applySave} variant="contained" size="small" disabled={processing} startIcon={processing ? <CircularProgress size={16} /> : null}>
+                                {processing ? 'Збереження...' : 'Зберегти'}
                             </Button>
-                            <Button onClick={() => setEditingField(null)} variant="text" size="small">
+                            <Button onClick={() => setEditingField(null)} variant="text" size="small" disabled={processing}>
                                 Скасувати
                             </Button>
                         </Box>
                     </Box>
                 ) : (
                     <Box
-                        onClick={() => setEditingField('description')}
+                        onClick={() => !processing && setEditingField('description')}
                         sx={{
-                            cursor: 'pointer',
+                            cursor: processing ? 'default' : 'pointer',
                             p: 1,
                             borderRadius: 1,
                         }}
@@ -344,6 +122,7 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                                 <Autocomplete
                                     multiple
+                                    disabled={processing}
                                     options={teamMembers || []}
                                     value={data.assignees || []}
                                     onChange={(e, value) => setData('assignees', value)}
@@ -352,18 +131,20 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                     sx={{ width: '100%' }}
                                     renderInput={(params) => <TextField {...params} size="small" autoFocus placeholder="Оберіть..." />}
                                 />
-                                <IconButton size="small" color="primary" onClick={applySave}><CheckIcon /></IconButton>
+                                <IconButton size="small" color="primary" onClick={applySave} disabled={processing}>
+                                    {processing ? <CircularProgress size={16} /> : <CheckIcon />}
+                                </IconButton>
                             </Box>
                         ) : (
                             <Box 
-                                onClick={() => setEditingField('assignees')} 
-                                sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', height: '100%' }}
+                                onClick={() => !processing && setEditingField('assignees')}
+                                sx={{ cursor: processing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', height: '100%' }}
                             >
                                 {data.assignees?.length > 0 ? (
                                     <AvatarGroup max={4} sx={{ '& .MuiAvatar-root': { width: 28, height: 28, fontSize: '0.8rem' } }}>
                                         {data.assignees.map((u) => (
                                             <Tooltip key={u.id} title={u.name || u.full_name}>
-                                                <Avatar>{(u.name || u.full_name)?.[0]}</Avatar>
+                                                <Avatar src={u?.avatar_path ? `/storage/${u.avatar_path}` : null}>{u?.full_name?.charAt(0)}</Avatar>
                                             </Tooltip>
                                         ))}
                                     </AvatarGroup>
@@ -383,7 +164,7 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                         <FlagIcon sx={{ color: priorityColors[data.priority], fontSize: 18 }} />
                         {editingField === 'priority' ? (
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%' }}>
-                                <FormControl size="small" fullWidth>
+                                <FormControl size="small" fullWidth disabled={processing}>
                                     <Select
                                         value={data.priority || ''}
                                         onChange={(e) => setData('priority', e.target.value)}
@@ -394,10 +175,12 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                         ))}
                                     </Select>
                                 </FormControl>
-                                <IconButton size="small" color="primary" onClick={applySave}><CheckIcon /></IconButton>
+                                <IconButton size="small" color="primary" onClick={applySave} disabled={processing}>
+                                    {processing ? <CircularProgress size={16} /> : <CheckIcon />}
+                                </IconButton>
                             </Box>
                         ) : (
-                            <Box onClick={() => setEditingField('priority')} sx={{ cursor: 'pointer', flexGrow: 1 }}>
+                            <Box onClick={() => !processing && setEditingField('priority')} sx={{ cursor: processing ? 'default' : 'pointer', flexGrow: 1 }}>
                                 <Typography variant="body2">{priorities.find(p => p.id === data.priority)?.label || 'Немає'}</Typography>
                             </Box>
                         )}
@@ -419,7 +202,9 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                             alignItems: 'center', 
                                             gap: 1,
                                             bgcolor: '#fff',
-                                            borderRadius: 1
+                                            borderRadius: 1,
+                                            opacity: processing ? 0.6 : 1,
+                                            pointerEvents: processing ? 'none' : 'auto'
                                         }}
                                     >
                                         {/* Дата початку */}
@@ -430,9 +215,10 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                             onChange={(newValue) => setData('date_start', newValue ? newValue.format('YYYY-MM-DD HH:mm:ss') : null)}
                                             open={openStart}
                                             onClose={() => setOpenStart(false)}
+                                            disabled={processing}
                                             slotProps={{ 
                                                 textField: {
-                                                    onClick: () => setOpenStart(true),
+                                                    onClick: () => !processing && setOpenStart(true),
                                                     size: 'small',
                                                     sx: { 
                                                         width: '112px',
@@ -461,9 +247,10 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                             onChange={(newValue) => setData('date_end', newValue ? newValue.format('YYYY-MM-DD HH:mm:ss') : null)}
                                             open={openEnd}
                                             onClose={() => setOpenEnd(false)}
+                                            disabled={processing}
                                             slotProps={{ 
                                                 textField: { 
-                                                    onClick: () => setOpenEnd(true),
+                                                    onClick: () => !processing && setOpenEnd(true),
                                                     size: 'small', 
                                                     placeholder: 'Кінець',
                                                     sx: {
@@ -485,12 +272,12 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                 </LocalizationProvider>
                                 
                                 {/* Кнопка збереження */}
-                                <IconButton size="small" color="primary" onClick={applySave}>
-                                    <CheckIcon />
+                                <IconButton size="small" color="primary" onClick={applySave} disabled={processing}>
+                                    {processing ? <CircularProgress size={16} /> : <CheckIcon />}
                                 </IconButton>
                             </Box>
                         ) : (
-                            <Box onClick={() => setEditingField('dates')} sx={{ cursor: 'pointer', flexGrow: 1 }}>
+                            <Box onClick={() => !processing && setEditingField('dates')} sx={{ cursor: processing ? 'default' : 'pointer', flexGrow: 1 }}>
                                 <Typography variant="body2">
                                     {dayjs(data.date_start).format('DD.MM.YY HH:mm')} - 
                                     {dayjs(data.date_end).format('DD.MM.YY HH:mm')}
@@ -516,7 +303,7 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                     size="small"
                                     color="secondary"
                                     sx={{ width: '100%' }}
-                                    disabled={!data.date_end}
+                                    disabled={!data.date_end || processing}
                                 >
                                     <InputLabel id="notif-select-label">Нагадування</InputLabel>
 
@@ -527,7 +314,6 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                         onChange={(e) => {
                                             setData('reminder', e.target.value);
                                             handleSave();
-                                            setEditingField(null);
                                         }}
                                     >
                                         {availableReminders.map((rem) => (
@@ -538,12 +324,14 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                     </Select>
                                 </FormControl>
                             </Tooltip>
-                            <IconButton size="small" color="primary" onClick={applySave}><CheckIcon /></IconButton>
+                            <IconButton size="small" color="primary" onClick={applySave} disabled={processing}>
+                                {processing ? <CircularProgress size={16} /> : <CheckIcon />}
+                            </IconButton>
                         </Box>
                     ) : (
                         <Box
                             sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
-                            onClick={() => setEditingField('reminder')}
+                            onClick={() => !processing && setEditingField('reminder')}
                         >
                             <NotificationsActiveIcon
                                 sx={{
@@ -571,11 +359,14 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                                     onChange={(e, val) => setData('progress', val)} 
                                     valueLabelDisplay="auto"
                                     color="secondary"
+                                    disabled={processing}
                                 />
-                                <IconButton size="small" color="primary" onClick={applySave}><CheckIcon /></IconButton>
+                                <IconButton size="small" color="primary" onClick={applySave} disabled={processing}>
+                                    {processing ? <CircularProgress size={16} /> : <CheckIcon />}
+                                </IconButton>
                             </Box>
                         ) : (
-                            <Box onClick={() => setEditingField('progress')} sx={{ cursor: 'pointer', flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box onClick={() => !processing && setEditingField('progress')} sx={{ cursor: 'pointer', flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <LinearProgress 
                                     variant="determinate" 
                                     value={data.progress || 0}

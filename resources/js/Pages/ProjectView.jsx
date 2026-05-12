@@ -89,6 +89,18 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
         setIsDetailsModalOpen(true);
     };
 
+    // Функція для миттєвого видалення завдання з локального стейту
+    const handleDeleteTask = (taskId) => {
+        // Прибираємо завдання з масиву
+        setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+        
+        // Якщо видалене завдання було відкрите у модалці - закриваємо її
+        if (selectedTask && selectedTask.id === taskId) {
+            setIsDetailsModalOpen(false);
+            setSelectedTask(null);
+        }
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -156,6 +168,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
                         onTaskClick={handleTaskClick}
+                        onDeleteTask={handleDeleteTask}
                     />
                 )}
 
@@ -167,6 +180,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         reminders={reminders}
                         onDrop={handleDrop}
                         onTaskClick={handleTaskClick}
+                        onDeleteTask={handleDeleteTask}
                     />
                 )}
 
@@ -177,6 +191,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         priorities={priorities}
                         reminders={reminders}
                         onTaskClick={handleTaskClick}
+                        onDeleteTask={handleDeleteTask}
                         // onDrop={handleDrop}
                     />
                 )}
@@ -195,7 +210,6 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
             />
 
             <TaskView
-                // task={selectedTask}
                 task={project.tasks.find(t => t.id === selectedTask?.id)}
                 project={project}
                 teamMembers={teamMembers} 

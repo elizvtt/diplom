@@ -72,9 +72,11 @@ class ProfileController extends Controller
         // Оновлення таблиці notification_settings (якщо прийшли налаштування)
         if (isset($validated['settings'])) {
             foreach ($validated['settings'] as $settingData) {
-                $user->notificationSettings()->where('id', $settingData['id'])->update([
-                    'is_enabled' => $settingData['is_enabled'] ? 1 : 0
-                ]);
+                if (array_key_exists('is_enabled', $settingData)) {
+                    $user->notificationSettings()->where('id', $settingData['id'])->update([
+                        'is_enabled' => $settingData['is_enabled'] ? 1 : 0
+                    ]);
+                }
             }
         }
 

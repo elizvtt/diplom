@@ -67,7 +67,7 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                 case '1_hour':  return diffInHours >= 1;
                 case '1_day':   return diffInHours >= 24;
                 case '2_days':  return diffInHours >= 48;
-                case '1_week':  return diffInHours >= 168; // 24 * 7
+                case '1_week':  return diffInHours >= 168;
                 default: return true;
             }
         });
@@ -113,9 +113,7 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
     //     date_start: formData.date_start ? formData.date_start.format('YYYY-MM-DD HH:mm:ss') : null,
     //     date_end: formData.date_end ? formData.date_end.format('YYYY-MM-DD HH:mm:ss') : null,
     //     reminder: formData.reminder !== 'none' ? formData.reminder : null,
-    // }));
-
-    
+    // }));    
 
     // Головна функція створення завдання
     const handleCreateTask = () => {

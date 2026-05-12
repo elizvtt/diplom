@@ -59,6 +59,7 @@ Route::middleware('auth')->group(function () {
     // обновоения статуса
     Route::post('/tasks/update-status', [TaskController::class, 'updateStatus']);
     Route::post('/tasks/{task}/update', [TaskController::class, 'updateTask']);
+    Route::post('/tasks/{task}/delete', [TaskController::class, 'deleteTask']);
     
 
     Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');

@@ -48,7 +48,7 @@ class TaskController extends Controller
             'files.*.max' => 'Максимальний розмір файлу — 10 MB.',
         ]);
 
-        debug($validated);
+        // debug($validated);
 
         // Створення самого завдання
         $task = Task::create([
@@ -137,8 +137,84 @@ class TaskController extends Controller
         return back();
     }
 
-    public function updateTask(Request $request)
+    public function updateTask(Request $request, Task $task)
     {
-        debug($request);
+        // dd($request->only('assignees'));
+        // Валідація вхідних даних 
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'date_start' => ['nullable', 'date'],
+            'date_end' => ['nullable', 'date', 'after_or_equal:date_start'],
+            // Якщо статуси та пріоритети приходять з фронту:
+            'status' => ['sometimes', Rule::enum(TaskStatus::class)],
+            'priority' => ['sometimes', Rule::enum(TaskPriority::class)],
+            'progress' => ['sometimes', 'integer', 'min:0', 'max:100'],
+            
+            'assignees' => ['nullable', 'array'],
+            'assignees.*' => ['exists:users,id'],
+        ], [
+            'title.required' => 'Введіть назву завдання',
+            'title.max' => 'Надто довга назва завдання',
+            'date_end.after_or_equal' => 'Дата кінця не може бути раніше дати початку',
+            'progress.min' => 'Мінімальний прогрес дорівнює 0',
+            'progress.max' => 'Максимальний прогрес дорівнює 100',
+            'assignees.*.exists' => 'Обраний виконавець не знайдений у системі',
+        ]);
+
+        // Оновлення основних полів завдання
+        // Форматуємо description у масив, як ви це робите при створенні
+        $task->update([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ? ['text' => $validated['description']] : null,
+            'date_start' => $validated['date_start'],
+            'date_end' => $validated['date_end'],
+            // Використовуємо $request->has(), щоб оновлювати ці поля, тільки якщо вони передані
+            'priority' => $request->has('priority') ? $validated['priority'] : $task->priority,
+            'progress' => $request->has('progress') ? $validated['progress'] : $task->progress,
+        ]);
+
+        // Розумне оновлення виконавців
+        if ($request->has('assignees')) {
+            // Отримуємо ID поточних виконавців з БД
+            $currentAssigneeIds = TaskAssignee::where('task_id', $task->id)->pluck('user_id')->toArray();
+            $newAssigneeIds = $validated['assignees'] ?? [];
+
+            // Визначаємо, кого треба додати, а кого видалити
+            $toAdd = array_diff($newAssigneeIds, $currentAssigneeIds);
+            $toRemove = array_diff($currentAssigneeIds, $newAssigneeIds);
+
+            // Видаляємо тих, кого зняли з завдання
+            if (!empty($toRemove)) {
+                TaskAssignee::where('task_id', $task->id)
+                    ->whereIn('user_id', $toRemove)
+                    ->delete();
+            }
+
+            // Додаємо лише нових
+            foreach ($toAdd as $userId) {
+                TaskAssignee::create([
+                    'task_id' => $task->id,
+                    'user_id' => $userId,
+                    'status'  => TaskAssigneeStatus::Assigned,
+                    'progress' => 0
+                ]);
+            }
+        }
+
+        // Повернення відповіді
+        return redirect()->back()->with('success', 'Завдання успішно оновлено!');
+    }
+
+    public function deleteTask(Task $task)
+    {
+        // Перевіряємо, чи поточний користувач є автором завдання
+        if ($task->creator_id !== auth()->id()) {
+            abort(403, 'У вас немає прав для видалення чужого завдання.');
+        }
+
+        $task->update(['is_active' => 0]);
+
+        return redirect()->back()->with('success', 'Завдання успішно видалено.');
     }
 }
