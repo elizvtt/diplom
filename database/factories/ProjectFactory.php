@@ -15,7 +15,7 @@ class ProjectFactory extends Factory
     {
         return [
             'uuid' => (string) Str::uuid(),
-            'title' => fake()->sentence(3), // Рандомна назва з 3 слів
+            'title' => fake()->sentence(3), 
             'description' => fake()->realText(100),
             'owner_id' => User::where('id', '!=', 1)->inRandomOrder()->first()?->id ?? User::factory(),
             'is_active' => 1,

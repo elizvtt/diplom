@@ -19,7 +19,7 @@ return new class extends Migration
             
             $table->string('email');
             
-            $table->string('token', 64)->unique();// Токен ОБЯЗАТЕЛЬНО уникальный
+            $table->string('token', 64)->unique();
             $table->enum('status', array_column(InvitationStatus::cases(), 'value'))->default(InvitationStatus::Pending->value);
             
             $table->dateTime('expires_at');

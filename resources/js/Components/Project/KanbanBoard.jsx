@@ -83,7 +83,8 @@ export default function KanbanBoard({ tasks, statuses, priorities, reminders, on
                                     toggleSubtasks={toggleSubtasks}
                                     onDragStart={onDragStart}
                                     onDrop={onDrop}
-                                    onClick={() => onTaskClick(task)}
+                                    // onClick={() => onTaskClick(task)}
+                                    onClick={onTaskClick}
                                     onDeleteTask={onDeleteTask}
                                 />
                         ))}

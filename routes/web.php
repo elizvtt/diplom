@@ -9,6 +9,7 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\GradeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -60,15 +61,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/tasks/update-status', [TaskController::class, 'updateStatus']);
     Route::post('/tasks/{task}/update', [TaskController::class, 'updateTask']);
     Route::post('/tasks/{task}/delete', [TaskController::class, 'deleteTask']);
-    
 
+    
+    // ПРИГЛАШЕНИЯ И КОМАНДА
     Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');
 
     Route::post('/projects/{project}/invitations', [InvitationController::class, 'invite'])->name('projects.invitations.store');
-
     Route::post('/projects/{project}/invitations/search', [InvitationController::class, 'searchUser'])->name('projects.invitations.search');
+    Route::post('/invitations/{invitation}/revoke', [InvitationController::class, 'revoke']);
 
     Route::get('/projects/{project}/join', [InvitationController::class, 'join'])->name('projects.invitations.join');
+
+    // ОЦЕНКИ
+    Route::get('/projects/{project}/grades', [GradeController::class, 'showGrades'])->name('grades.show');
+    Route::post('/projects/{project}/grades', [GradeController::class, 'saveGrades'])->name('grades.save');
    
     // & КОММЕНТАРИИ
     Route::post('/add/comment', [CommentController::class, 'addComment'])->name('comments.store');

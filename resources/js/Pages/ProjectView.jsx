@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, usePage, router, Link } from '@inertiajs/react';
-
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 import CreateTaskModal from '@/Components/Tasks/CreateTaskModal';
@@ -9,18 +8,15 @@ import TaskView from '@/Components/Tasks/TaskView';
 import KanbanBoard from '@/Components/Project/KanbanBoard';
 import ListView from '@/Components/Project/ListView';
 import CalendarView from '@/Components/Project/CalendarView';
-
 import useLocalStorage from '@/hooks/useLocalStorage';
 
-import { Box, Button, Tab, Tabs, Typography, Snackbar, Alert } from '@mui/material';
-
-import GroupIcon from '@mui/icons-material/Group';
+import { Box, Typography, Button, Tabs, Tab } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-
+import GroupIcon from '@mui/icons-material/Group';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 
 export default function ProjectView({ project, teamMembers, statuses, priorities, reminders }) {
 
@@ -30,20 +26,21 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
     // Визначаємо поточну вкладку для цього конкретного проекту
     const currentTab = allTabs[project.uuid] || 'kanban';
    
-    // console.log('[ProjectView] project:', project)
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false); // Стейт для модального вікна
     const [tasks, setTasks] = useState(project.tasks || []);
     const { flash } = usePage().props; // Отримуємо flash повідомлення
 
-    // Додай до стейтів у ProjectView
+    // Стейтів у ProjectView для деталей завдання
     const [selectedTask, setSelectedTask] = useState(null); // Яке завдання відкрите
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // Окремий стейт для деталей
+
+    // ID батьківського завдання (ДЛЯ ПІДЗАДАЧ)
+    const [parentTaskIdForNew, setParentTaskIdForNew] = useState(null);
 
     // Слідкуємо за змінами в project.tasks, які приходять від сервера
     useEffect(() => {
         setTasks(project.tasks);
     }, [project.tasks]); // Як тільки пропси оновляться, стейт синхронізується
-
 
     const handleTabChange = (event, newValue) => {
         setAllTabs({
@@ -52,7 +49,16 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
         });
     };
     
-    const handleOpenModal = () => setIsTaskModalOpen(true); // Відкриття модалки
+    // МОДАЛЬНЕ ВІКНО СТВОРЕННЯ
+    const handleOpenCreateModal = (parentId = null) => {
+        setParentTaskIdForNew(parentId); // Зберігаємо ID батька
+        setIsTaskModalOpen(true);
+    };
+
+    const handleCloseCreateModal = () => {
+        setIsTaskModalOpen(false);
+        setParentTaskIdForNew(null); // Очищаємо стейт після закриття
+    };
 
     // Коли починаємо тягнути картку, запам'ятовуємо її ID
     const handleDragStart = (e, taskId) => e.dataTransfer.setData('taskId', taskId);
@@ -85,6 +91,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
 
     // Функція для відкриття модалки з даними завдання
     const handleTaskClick = (task) => {
+        console.log("Родитель получил задачу для отображения:", task.id);
         setSelectedTask(task);
         setIsDetailsModalOpen(true);
     };
@@ -121,6 +128,16 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <Button
                             variant="outlined"
+                            title='Оцінювання внеску студентів'
+                            startIcon={<AssignmentTurnedInIcon />}
+                            component={Link}
+                            href={`/projects/${project.uuid}/grades`}
+                            sx={{ color: '#f7a4e6'}}
+                        >
+                            Оцінювання
+                        </Button>
+                        <Button
+                            variant="outlined"
                             color='secondary'
                             startIcon={<GroupIcon />}
                             component={Link}
@@ -128,7 +145,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         >
                             Команда
                         </Button>
-                        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenModal}>
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenCreateModal(null)}>
                             Завдання
                         </Button>
                     </Box>
@@ -156,6 +173,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                     />
                 </Tabs>         
             </Box>
+            
             {/* Перемикач контенту */}
             <Box sx={{ mt: 2 }}>
                 {currentTab === 'kanban' && (
@@ -192,16 +210,16 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                         reminders={reminders}
                         onTaskClick={handleTaskClick}
                         onDeleteTask={handleDeleteTask}
-                        // onDrop={handleDrop}
                     />
                 )}
             </Box>
             
 
-            {/* МОДАЛКА СОЗДАНИЯ НОВОГО ЗАДАНИЯ */}
+            {/* МОДАЛКА СТВОРЕННЯ НОВОГО ЗАВДАННЯ АБО ПІДЗАДАЧІ */}
             <CreateTaskModal 
                 open={isTaskModalOpen} 
-                onClose={() => setIsTaskModalOpen(false)} 
+                onClose={handleCloseCreateModal}
+                parentTaskId={parentTaskIdForNew}
                 project={project}
                 teamMembers={teamMembers}
                 statuses={statuses}
@@ -210,7 +228,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
             />
 
             <TaskView
-                task={project.tasks.find(t => t.id === selectedTask?.id)}
+                task={selectedTask}
                 project={project}
                 teamMembers={teamMembers} 
                 reminders={reminders}    
@@ -219,6 +237,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                 open={isDetailsModalOpen} 
                 onClose={() => setIsDetailsModalOpen(false)} 
                 onStatusChange={handleDrop}
+                onAddSubtask={() => handleOpenCreateModal(selectedTask?.id)} // ЗМІНЕНО: прокидаємо функцію відкриття підзадачі
             />
 
         </AuthenticatedLayout>

@@ -101,14 +101,33 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        if ($project->owner_id !== auth()->id()) abort(403, 'У вас немає доступу до цього проєкту.');
+        if ($project->owner_id !== auth()->id() && !$project->members->contains(auth()->id())) {
+            abort(403, 'У вас немає доступу до цього проєкту');
+        }
 
-        // завантажуємо зв'язки та лічильники
+        // завантажуємо лічильники
         $project->loadCount([
             'tasks as tasks_total' => fn($q) => $q->where('is_active', 1),
             'tasks as tasks_completed' => fn($q) => $q->where('is_active', 1)->where('status', 'done'),
-        // ])->load(['owner', 'members', 'tasks.assignees', 'tasks.attachments', 'tasks.comments']);
-        ])->load(['owner', 'members', 'tasks.assignees', 'tasks.attachments', 'tasks.comments.user']);
+        ]);
+
+        $project->load([
+            'owner',
+            'members',
+            'tasks' => function ($query) {
+                $query->where('is_active', 1)
+                    ->whereNull('parent_task_id')
+                    ->with([
+                        'assignees', 
+                        'attachments', 
+                        'comments.user',
+                        'subtasks.assignees', // Завантажуємо підзадачі та їх виконавців
+                        'subtasks.attachments',
+                        'subtasks.comments.user',
+                        'subtasks.parent' // Щоб підзадача "знала" свого батька
+                    ]);
+                }
+        ]);
 
         $teamMembers = collect([$project->owner])
             ->merge($project->members)
@@ -128,7 +147,7 @@ class ProjectController extends Controller
             // Передаємо словники статусів та пріоритетів
             'statuses' => collect(TaskStatus::cases())->map(fn($s) => [
                 'id' => $s->value,
-                'label' => str($s->name)->headline(), // Робить з "InProgress" -> "In Progress"
+                'label' => str($s->name)->headline(),
             ]),
             'priorities' => collect(TaskPriority::cases())->map(fn($p) => [
                 'id' => $p->value,
@@ -139,7 +158,6 @@ class ProjectController extends Controller
                 'label' => $r->label(), // переведенный текст
             ]),
         ]);
-
     }
 
 }

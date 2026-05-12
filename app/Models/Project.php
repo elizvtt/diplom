@@ -35,6 +35,12 @@ class Project extends Model
         });
     }
 
+    // Вказуємо, що для URL використовується uuid
+    public function getRouteKeyName()
+    {
+        return 'uuid';
+    }
+
     /**
      * Получить владельца этого проекта.
      * @return BelongsTo<User, $this>
@@ -60,9 +66,17 @@ class Project extends Model
         return $this->hasMany(Task::class);
     }
 
-    // Вказуємо, що для URL використовується uuid
-    public function getRouteKeyName()
+    /**
+     * Получить все приглашения для этого проекта.
+     */
+    public function invitations()
     {
-        return 'uuid';
+        return $this->hasMany(Invitation::class);
     }
+
+    public function grades()
+    {
+        return $this->hasMany(Grade::class);
+    }
+
 }

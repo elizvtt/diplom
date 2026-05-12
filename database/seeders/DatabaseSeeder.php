@@ -2,47 +2,41 @@
 
 namespace Database\Seeders;
 
-use App\Models\Project;
 use App\Models\User;
-use App\Enums\TeamRole;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Task;
+use App\Models\Project;
+
+use App\Enums\UserRole;
+
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory()->create([
-        //     'id' => 1,
-        //     'full_name' => 'Єлизавета Палазова',
-        //     'email' => 'likzaa332@gmail.com',
-        //     'role' => UserRole::Admin,
-        // ]);
+        // АДМИН
+        User::factory()->create([
+            'full_name' => 'Єлизавета Палазова',
+            'email' => 'likzaa332@gmail.com',
+            'role' => UserRole::Admin,
+        ]);
 
-        // Створюємо 10 проєктів
-        $projects = Project::factory(10)->create();
+        // & USERS
+        User::factory(20)->create();
 
-        // Для кожного проєкту додаємо 2-4 рандомних учасників (крім власника і ID 1)
-        $projects->each(function ($project) {
-            $potentialMembers = User::where('id', '!=', 1)
-                ->where('id', '!=', $project->owner_id)
-                ->inRandomOrder()
-                ->limit(rand(2, 4))
-                ->get();
+        // & PROJECTS
+        Project::factory(10)->create();
 
-            foreach ($potentialMembers as $user) {
-                // Використовуємо зв'язок members() з моделі Project
-                $project->members()->attach($user->id, [
-                    'role' => fake()->randomElement(array_column(TeamRole::cases(), 'value')),
-                    'is_active' => 1,
-                    'joined_at' => now(),
-                ]);
-            }
-        });
+        // & TASKS
+        Task::factory(30)
+            ->create()
+            ->each(function ($task) {
+
+                $users = User::inRandomOrder()
+                    ->take(rand(1, 3))
+                    ->pluck('id');
+
+                $task->assignees()->attach($users);
+            });
     }
 }

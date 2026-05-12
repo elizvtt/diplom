@@ -21,6 +21,7 @@ return new class extends Migration
             $table->foreignId('owner_id')->constrained('users');
 
             $table->tinyInteger('is_active')->default(1);
+            $table->tinyInteger('grading_completed')->default(0);
 
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();

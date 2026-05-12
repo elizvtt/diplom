@@ -110,6 +110,11 @@ class User extends Authenticatable
         return $this->hasMany(NotificationSetting::class);
     }
 
+    public function grades()
+    {
+        return $this->hasMany(Grade::class);
+    }
+
     // /**
     //  * Связь с таблицей настроек уведомлений
     //  */

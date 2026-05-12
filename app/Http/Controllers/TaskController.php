@@ -22,6 +22,7 @@ class TaskController extends Controller
             'project_id' => ['required', $this->projectAccessRule()],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'parent_task_id' => ['nullable', 'exists:tasks,id'],
             'date_start' => ['nullable', 'date'],
             'date_end' => ['nullable', 'date', 'after_or_equal:date_start'], // Має бути пізніше дати початку
             'status' => ['required', Rule::enum(TaskStatus::class)],
@@ -56,6 +57,7 @@ class TaskController extends Controller
             'creator_id' => Auth::id(),
             'title' => $validated['title'],
             'description' => $validated['description'] ? ['text' => $validated['description']] : null,
+            'parent_task_id' => $validated['parent_task_id'] ?? null,
             'date_start' => $validated['date_start'],
             'date_end' => $validated['date_end'],
             'status' => $validated['status'],

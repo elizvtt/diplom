@@ -1,8 +1,9 @@
 import React, { useEffect, useState  } from 'react';
+import { router } from '@inertiajs/react';
 import TipTapEditor from '@/Components/Editors/TipTapEditor';
 import DOMPurify from 'dompurify';
 import dayjs from 'dayjs';
-import 'dayjs/locale/uk'; // Для української локалізації
+import 'dayjs/locale/uk'; 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -18,15 +19,20 @@ import FlagIcon from '@mui/icons-material/Flag';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CheckIcon from '@mui/icons-material/Check';
+import AddIcon from '@mui/icons-material/Add';
 
 import { priorityColors } from '@/utils/constants';
 
-export default function TaskDetails({ task, project, priorities, teamMembers, reminders, data, setData, editingField, setEditingField, handleSave, processing }) {
+export default function TaskDetails({ task, project, priorities, teamMembers, reminders, data, setData, editingField, setEditingField, handleSave, processing, onAddSubtask }) {
     
-    console.log('data: ', data);
+    // console.log('data: ', data);
 
     const [openStart, setOpenStart] = useState(false);
     const [openEnd, setOpenEnd] = useState(false);
+
+    // Стейт для швидкого вводу підзадачі
+    const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+    const [isAddingSubtask, setIsAddingSubtask] = useState(false);
 
     useEffect(() => {
         const handler = (e) => {
@@ -63,6 +69,29 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
         });
     };
     const availableReminders = getAvailableReminders();
+
+    const handleCreateSubtask = () => {
+        if (!newSubtaskTitle.trim()) return;
+
+        setIsAddingSubtask(true);
+        
+        // Відправляємо на ваш стандартний роут створення завдання
+        router.post('/add/task', {
+            title: newSubtaskTitle,
+            project_id: project.id,
+            parent_task_id: task.id,
+            status: 'backlog',
+            progress: 0,
+            priority: task.priority // Успадковуємо від батька
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setNewSubtaskTitle(''); // Очищаємо інпут
+                setIsAddingSubtask(false);
+            },
+            onError: () => setIsAddingSubtask(false)
+        });
+    };
 
     return (
         <Box sx={{ flexGrow: 1, minWidth: 0 }}>            
@@ -378,8 +407,38 @@ export default function TaskDetails({ task, project, priorities, teamMembers, re
                         )}
                     </Box>
                 </Box>
-
             </Stack>
+
+            {/* БЛОК ПІДЗАДАЧ */}
+            <Box sx={{ mt: 2 }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5 }}>
+                    Підзадачі ({task.subtasks?.length || 0})
+                </Typography>
+
+                {/* Вивід існуючих підзадач */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                    {task.subtasks?.map(sub => (
+                        <Box key={sub.id} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, border: '1px solid #eee', borderRadius: 2 }}>
+                            {/* Якщо потрібно, тут можна додати іконку або чекбокс статусу */}
+                            <Typography sx={{ textDecoration: sub.status === 'done' ? 'line-through' : 'none' }}>
+                                {sub.title}
+                            </Typography>
+                        </Box>
+                    ))}
+                </Box>
+
+                {/* КНОПКА ВІДКРИТТЯ МОДАЛКИ СТВОРЕННЯ */}
+                <Button 
+                    variant="outlined" 
+                    color="secondary" 
+                    startIcon={<AddIcon />} 
+                    onClick={onAddSubtask}
+                    sx={{ borderRadius: 2 }}
+                >
+                    Додати підзадачу
+                </Button>
+            </Box>
+
         </Box>
     );
 }

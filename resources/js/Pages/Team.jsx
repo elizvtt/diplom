@@ -6,18 +6,33 @@ import MemberRow from '@/Components/Team/MemberRow';
 import {
     Container, Typography, Box, Paper,
     TextField, Button, IconButton, Tooltip,
-    Snackbar, Alert
+    Snackbar, Alert, Avatar, Chip
 } from '@mui/material';
 
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import LinkIcon from '@mui/icons-material/Link';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import AccessTimeIcon from '@mui/icons-material/AccessTime'; // Pending
+import TimerOffIcon from '@mui/icons-material/TimerOff'; // Expired
+import BlockIcon from '@mui/icons-material/Block'; // Revoked
+import CancelIcon from '@mui/icons-material/Cancel'; // Кнопка відміни
 
-export default function Team({ project, invite_link }) {
-    // Створюємо стейт для email
-    const [searchEmail, setSearchEmail] = useState('');
-    
+const getStatusChip = (status) => {
+    switch (status) {
+        case 'pending':
+            return <Chip icon={<AccessTimeIcon sx={{ fontSize: '16px !important' }}/>} label="Очікує" size="small" color="warning" variant="outlined" sx={{ fontWeight: 'bold' }} />;
+        case 'expired':
+            return <Chip icon={<TimerOffIcon sx={{ fontSize: '16px !important' }}/>} label="Прострочено" size="small" color="default" variant="outlined" sx={{ fontWeight: 'bold' }} />;
+        case 'revoked':
+            return <Chip icon={<BlockIcon sx={{ fontSize: '16px !important' }}/>} label="Відкликано" size="small" color="error" variant="outlined" sx={{ fontWeight: 'bold' }} />;
+        default:
+            return null;
+    }
+};
+
+export default function Team({ project, inviteLink, invitations }) {
+    const [searchEmail, setSearchEmail] = useState(''); // стейт для email
     const [foundUser, setFoundUser] = useState(null);
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchError, setSearchError] = useState('');
@@ -44,9 +59,7 @@ export default function Team({ project, invite_link }) {
                     body: JSON.stringify({ email: searchEmail }),
                 }
             );
-    
             const data = await response.json();
-    
             setFoundUser(data.found ? data.user : null);
 
         } finally {
@@ -69,8 +82,17 @@ export default function Team({ project, invite_link }) {
         });
     };
 
+    // Функція скасування запрошення
+    const handleRevoke = (inviteId) => {
+        if (window.confirm('Ви впевнені, що хочете відкликати це запрошення?')) {
+            router.post(`/invitations/${inviteId}/revoke`, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout header={null}>
             <Head title={`Команда - ${project.title}`} />
 
                 <Box
@@ -179,18 +201,16 @@ export default function Team({ project, invite_link }) {
                         )}
                     </Box>
 
+                    {/* ПОТОЧНІ УЧАСНИКИ */}
                     <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
                         Поточні учасники ({project.members.length + 1})
                     </Typography>
-
-                    {/* Список учасників */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
                         {/* Власник (завжди перший) */}
                         <MemberRow 
                             user={project.owner}
                             isOwner={true} 
                         />
-                        
                         {/* Учасники */}
                         {project.members.map((member) => (
                             <MemberRow 
@@ -199,6 +219,66 @@ export default function Team({ project, invite_link }) {
                             />
                         ))}
                     </Box>
+
+                    {/* ЗАПРОШЕННЯ */}
+                    {/* ІСТОРІЯ ЗАПРОШЕНЬ (PENDING, EXPIRED, REVOKED) */}
+                    {invitations && invitations.length > 0 && (
+                        <>
+                            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
+                                Надіслані запрошення ({invitations.length})
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
+                                {invitations.map((invite) => (
+                                    <Box 
+                                        key={invite.id} 
+                                        sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'space-between',
+                                            p: 2, 
+                                            border: '1px solid #e2e8f0', 
+                                            borderRadius: 3,
+                                            bgcolor: invite.status === 'revoked' ? '#fff5f5' : '#fafafa', // Злегка червоний фон для відкликаних
+                                            opacity: invite.status === 'pending' ? 1 : 0.7 // Робимо неактивні трохи прозорішими
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Avatar sx={{ bgcolor: '#e0e0e0', width: 36, height: 36 }}>
+                                                <EmailOutlinedIcon sx={{ color: '#757575', fontSize: 20 }} />
+                                            </Avatar>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight="bold" sx={{ textDecoration: invite.status === 'revoked' ? 'line-through' : 'none' }}>
+                                                    {invite.email}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Надіслано: {new Date(invite.created_at).toLocaleDateString('uk-UA')}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            {/* Відмальовуємо бейдж статусу */}
+                                            {getStatusChip(invite.status)}
+                                            
+                                            {/* Кнопка "Відкликати" доступна ТІЛЬКИ для статусу pending */}
+                                            {invite.status === 'pending' && (
+                                                <Tooltip title="Відкликати запрошення">
+                                                    <IconButton 
+                                                        size="small" 
+                                                        color="error" 
+                                                        onClick={() => handleRevoke(invite.id)}
+                                                    >
+                                                        <CancelIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </>
+                    )}
+
 
                     {/* Посилання-запрошення */}
                     <Box sx={{ 
@@ -231,7 +311,7 @@ export default function Team({ project, invite_link }) {
                                     whiteSpace: 'nowrap'
                                 }}
                             >
-                                {invite_link}
+                                {inviteLink}
                             </Typography>
                         </Box>
 
@@ -246,7 +326,7 @@ export default function Team({ project, invite_link }) {
                                 flexShrink: 0
                             }}
                             onClick={() => {
-                                navigator.clipboard.writeText(invite_link)
+                                navigator.clipboard.writeText(inviteLink)
                                 setCopySnackbarOpen(true);
                             }}
                         >

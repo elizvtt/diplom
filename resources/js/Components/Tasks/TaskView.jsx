@@ -15,7 +15,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 import { statusColors } from '@/utils/constants';
 
-export default function TaskView({ task, project, teamMembers, priorities, statuses, reminders, open, onClose, onStatusChange }) {
+export default function TaskView({ task, project, teamMembers, priorities, statuses, reminders, open, onClose, onStatusChange, onAddSubtask }) {
     if (!task) return null;
     console.log('%c [TaskView] task: ', 'color: orange;', task);
     console.log('[TaskView] project: ', project);
@@ -23,7 +23,7 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
     const [currTab, setcurrTab] = useState('comments');
     const [editingField, setEditingField] = useState(null);
 
-    const { data, setData, post, processing, transform } = useForm({
+    const { data, setData, post, processing, transform, reset} = useForm({
         title: task.title || '',
         description: task.description?.text || '',
         date_start: task.date_start || null,
@@ -33,14 +33,32 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
         progress: task.progress || 0,
     });
 
+    useEffect(() => {
+        if (!task) return;
+
+        reset();
+
+        setData({
+            title: task.title || '',
+            description: task.description?.text || '',
+            priority: task.priority || '',
+            assignees: task.assignees || [],
+            progress: task.progress || 0,
+        });
+
+    }, [task]);
+
     const handleSave = () => {
-        transform((data) => ({
-            ...data,
-            assignees: data.assignees ? data.assignees.map(user => user.id) : []
-        }));
 
         post(`/tasks/${task.id}/update`, {
             preserveScroll: true,
+            data: {
+                ...data,
+                assignees: data.assignees
+                    ? data.assignees.map(user => user.id)
+                    : []
+            },
+
             onSuccess: () => {
                 setEditingField(null);
             }
@@ -127,6 +145,7 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
                         setEditingField={setEditingField}
                         handleSave={handleSave}
                         processing={processing}
+                        onAddSubtask={onAddSubtask}
                     />
                     
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 
 import { Typography, Box, Button, Avatar, IconButton, Select, MenuItem } from '@mui/material';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 
 
 export default function MemberRow({ user, isOwner = false }) {
@@ -41,7 +42,7 @@ export default function MemberRow({ user, isOwner = false }) {
                             <MenuItem value="editor">Редактор</MenuItem>
                         </Select>
                         <IconButton color="error" size="small">
-                            <DeleteOutlineIcon />
+                            <DeleteOutlineOutlinedIcon />
                         </IconButton>
                     </>
                 )}

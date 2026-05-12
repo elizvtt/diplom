@@ -16,7 +16,9 @@ return new class extends Migration
             $table->morphs('notifiable');
             $table->json('data');
             $table->dateTime('read_at')->nullable();
-            $table->dateTime();
+            
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
         });
     }
 

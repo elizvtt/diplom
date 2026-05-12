@@ -3,7 +3,6 @@ import { useForm } from '@inertiajs/react';
 import TipTapEditor from '@/Components/Editors/TipTapEditor';
 import dayjs from 'dayjs';
 
-
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Box, Typography, Button, TextField, Select, MenuItem,
@@ -26,7 +25,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
-export default function CreateTaskModal({ open, onClose, project, teamMembers, statuses, priorities, reminders }) {
+export default function CreateTaskModal({ open, onClose, parentTaskId, project, teamMembers, statuses, priorities, reminders }) {
     // console.log('teamMembers: ', teamMembers);
     const [openStart, setOpenStart] = useState(false);
     const [openEnd, setOpenEnd] = useState(false);
@@ -39,6 +38,8 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
 
     // ДАННЫЕ ФОРМЫ
     const { data, setData, post, processing, errors, reset, transform } = useForm({
+        project_id: project?.id || '',
+        parent_task_id: parentTaskId || null,
         title: '',
         description: '',
         assignees: [], 
@@ -104,16 +105,11 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
         const isStillValid = availableReminders.some(r => r.id === data.reminder);
         if (!isStillValid) setData('reminder', 'none');
     }, [data.date_end]);
-
-    // Форматируем данные
-    // transform((formData) => ({
-    //     ...formData,
-    //     project_id: project.id,
-    //     assignees: formData.assignees.map(u => u.id),
-    //     date_start: formData.date_start ? formData.date_start.format('YYYY-MM-DD HH:mm:ss') : null,
-    //     date_end: formData.date_end ? formData.date_end.format('YYYY-MM-DD HH:mm:ss') : null,
-    //     reminder: formData.reminder !== 'none' ? formData.reminder : null,
-    // }));    
+ 
+    // коли parentTaskId змінюється ззовні оновлюємо стейт useForm
+    useEffect(() => {
+        setData('parent_task_id', parentTaskId || null);
+    }, [parentTaskId]);
 
     // Головна функція створення завдання
     const handleCreateTask = () => {
@@ -136,7 +132,10 @@ export default function CreateTaskModal({ open, onClose, project, teamMembers, s
                     onClose(); // Закриваємо модалку
                     reset();   // Очищаємо форму
 
-                } else reset(); // Очищаємо форму
+                } else { 
+                    reset(); // Очищаємо форму
+                    setData('parent_task_id', parentTaskId || null);
+                }
             },
 
         });

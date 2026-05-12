@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('rated_by_id')->constrained('users')->cascadeOnDelete();
 
-            $table->decimal('score', 5, 2); // Оценка максимум 999.99
+            $table->decimal('score', 5, 2); 
             
             $table->string('comment')->nullable(); // Комментарий может быть пустым
 

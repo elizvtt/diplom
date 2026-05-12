@@ -98,4 +98,13 @@ class Task extends Model
         return $this->hasMany(Comment::class)->where('is_active', 1);
     }
 
+    public function subtasks()
+    {
+        return $this->hasMany(Task::class, 'parent_task_id');
+    }
+    
+    public function parent()
+    {
+        return $this->belongsTo(Task::class, 'parent_task_id');
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Enums\InvitationStatus;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,12 @@ class TeamController extends Controller
         // Завантажуємо власника та учасників (members)
         $project->load(['owner', 'members']);
 
+        // Отримуємо запрошення для цього проєкту
+        $invitations = $project->invitations()
+            ->where('status', '!=', InvitationStatus::Accepted->value)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         // Створюємо посилання, яке використовує UUID, але захищене підписом
         $inviteLink = URL::signedRoute('projects.invitations.join', [
             'project' => $project->uuid
@@ -27,8 +34,20 @@ class TeamController extends Controller
 
         return Inertia::render('Team', [
             'project' => $project,
-            'invite_link' => $inviteLink
+            'inviteLink' => $inviteLink,
+            'invitations' => $invitations
         ]);
+    }
+
+    public function revokeInvitation(Invitation $invitation)
+    {
+        // Перевірка прав (тільки автор запрошення або власник проєкту може скасувати)
+        if ($invitation->project->owner_id !== auth()->id() && $invitation->invited_by_id !== auth()->id()) {
+            abort(403, 'У вас немає прав для скасування запрошення');
+        }
+        $invitation->update(['status' => InvitationStatus::Revoked->value]);
+
+        return redirect()->back()->with('success', 'Запрошення скасовано.');
     }
 
 
