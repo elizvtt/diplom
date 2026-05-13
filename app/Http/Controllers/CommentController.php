@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Models\Task;
+
+use App\Notifications\SimpleNotification;
+use App\Enums\NotificationEvent;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -23,6 +28,21 @@ class CommentController extends Controller
             'user_id' => Auth::id(), // ID поточного користувача
             'text'    => $validated['text'],
         ]);
+
+        $task = Task::find($validated['task_id']);
+        foreach ($task->assignees as $user) {
+            if ($user->id === auth()->id()) continue;
+            $user->notify(
+                new SimpleNotification([
+                    'event' => NotificationEvent::NewComment->value,
+                    'title' => 'Новий коментар',
+                    'message' => 'Новий коментар до задачі "' . $task->title . '"',
+                    'project_id' => $task->project_id,
+                    'task_id' => $task->id,
+                    'author_id' => auth()->id(),
+                ])
+            );
+        }
 
         // Повернення назад
         return back()->with('success', 'Коментар додано');

@@ -11,8 +11,8 @@ import ProjectToolbar from '@/Components/Project/ProjectToolbar';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import useProcessedProjects from '@/hooks/useProcessedProjects';
 
-import { Alert, Snackbar, Box, Grid } from '@mui/material';
-
+import { Box, Grid, Paper } from '@mui/material';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 
 export default function ProjectsList({ projects }) {
     // console.log('[ProjectsList] projects: ', projects);
@@ -41,13 +41,6 @@ export default function ProjectsList({ projects }) {
     const [filterMenuAnchor, setFilterMenuAnchor] = useState(null);
     const [sortMenuAnchor, setSortMenuAnchor] = useState(null);
     
-
-    // const [snackbar, setSnackbar] = useState({
-    //     open: false,
-    //     message: '',
-    //     severity: 'warning',
-    // });
-
 
     // ^ Handlers
     // Обробники фільтрів та відображення
@@ -80,11 +73,6 @@ export default function ProjectsList({ projects }) {
         if (reason && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return;
         setIsModalOpen(false);
     };
-    // const handleCloseSnackbar = (event, reason) => {
-    //     if (reason === 'clickaway') return;
-    //     setSnackbar(prev => ({ ...prev, open: false }));
-    // };
-
     
     return (
         <AuthenticatedLayout>
@@ -116,25 +104,59 @@ export default function ProjectsList({ projects }) {
                 
             {/* ПРОЭКТЫ */}
             <Box>
-                {view === 'module' ? (
-                    <Grid container spacing={3}>
-                        {processedProjects.map((project) => (
-                            <Grid item key={project.id} xs={12} sm={6} md={4}>
-                               <ProjectCard project={project} />
-                            </Grid>
-                        ))}
-                    </Grid>
-
+                {processedProjects.length === 0 ? (
+                    // EMPTY state
+                    <Paper
+                        sx={{ 
+                        p: 8, 
+                            textAlign: 'center', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            bgcolor: 'rgba(0,0,0,0.02)',
+                            borderRadius: 4,
+                            border: '2px dashed #e0e0e0'
+                        }}
+                        elevation={0}
+                    >
+                        <FolderOpenIcon sx={{ fontSize: 80, color: '#bdbdbd', mb: 2 }} />
+                        <Typography variant="h5" fontWeight="bold" gutterBottom>
+                            Ви поки не маєте проєктів
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                            Створіть свій перший проєкт, щоб почати роботу з командою або відстежувати власні завдання.
+                        </Typography>
+                        <Button 
+                            variant="contained" 
+                            size="large" 
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenModal}
+                        >
+                            Створити проєкт
+                        </Button>
+                    </Paper>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {processedProjects.map((project) => (
-                            <ProjectListItem 
-                                key={project.id}
-                                project={project}
-                            />
-                        ))}
-                    </Box>
+                    <Box>
+                        {view === 'module' ? (
+                            <Grid container spacing={3}>
+                                {processedProjects.map((project) => (
+                                    <Grid item key={project.id} xs={12} sm={6} md={4}>
+                                    <ProjectCard project={project} />
+                                    </Grid>
+                                ))}
+                            </Grid>
 
+                        ) : (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {processedProjects.map((project) => (
+                                    <ProjectListItem 
+                                        key={project.id}
+                                        project={project}
+                                    />
+                                ))}
+                            </Box>
+                        )}
+                    </Box>
                 )}
             </Box>
 
@@ -150,22 +172,6 @@ export default function ProjectsList({ projects }) {
                     });
                 }}
             />
-            
-            {/* Спливаюче повідомлення */}
-            {/* <Snackbar 
-                open={snackbar.open} 
-                autoHideDuration={6000} // Попередження висить трохи довше
-                onClose={handleCloseSnackbar}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }} 
-            >
-                <Alert 
-                    onClose={handleCloseSnackbar} 
-                    severity={snackbar.severity}
-                    sx={{ width: '100%', borderRadius: 2 }}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar> */}
 
         </AuthenticatedLayout>
     );

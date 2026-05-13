@@ -96,14 +96,16 @@ class GradeController extends Controller
                     'comment' => $item['comment'],
                 ]
             );
-            $user = User::find($item['user_id']);
 
+            $user = User::find($item['user_id']);
             $user->notify(
-                new GradeChangedNotification(
-                    project: $project,
-                    score: $item['score'],
-                    comment: $item['comment']
-                )
+                new SimpleNotification([
+                    'event' => NotificationEvent::GradeChanged->value,
+                    'title' => 'Оцінку оновлено',
+                    'message' => 'Вам виставлено оцінку за проєкт',
+                    'project_id' => $project->id,
+                    'author_id' => auth()->id(),
+                ])
             );
         }
 

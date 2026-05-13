@@ -41,6 +41,8 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
         setData({
             title: task.title || '',
             description: task.description?.text || '',
+            date_start: task.date_start || null,
+            date_end: task.date_end || null,
             priority: task.priority || '',
             assignees: task.assignees || [],
             progress: task.progress || 0,
@@ -49,16 +51,13 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
     }, [task]);
 
     const handleSave = () => {
+        transform((data) => ({
+            ...data,
+            assignees: data.assignees.map(user => user.id),
+        }));
 
         post(`/tasks/${task.id}/update`, {
             preserveScroll: true,
-            data: {
-                ...data,
-                assignees: data.assignees
-                    ? data.assignees.map(user => user.id)
-                    : []
-            },
-
             onSuccess: () => {
                 setEditingField(null);
             }

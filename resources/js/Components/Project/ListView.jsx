@@ -82,7 +82,7 @@ export default function ListView({ tasks, statuses, priorities, reminders, onDro
                                         priorities={priorities}
                                         statuses={statuses}
                                         onStatusChange={onDrop}
-                                        onClick={() => onTaskClick(task)}
+                                        onClick={onTaskClick}
                                         onDeleteTask={onDeleteTask}
                                     />
                                 ))}

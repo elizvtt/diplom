@@ -2,21 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
 use App\Models\Project;
+
+use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
 use App\Enums\TaskReminder;
+
+use App\Services\GeminiService;
+use App\Services\TaskGenerationService;
 
 class ProjectController extends Controller
 {
     /**
      * создание проэкта
      */
-    public function createProject(Request $request)
+    public function createProject(Request $request, GeminiService $geminiService, TaskGenerationService $taskGenerationService)
     {
         // Валидация данных
         $validated = $request->validate([
@@ -45,7 +50,46 @@ class ProjectController extends Controller
             
             if ($request->boolean('generate_ai_tasks')) {
                 Log::info("ШІ-генерація увімкнена для проєкту ID: {$project->id}");
-                // GenerateAiTasks::dispatch($project);
+                // LIMIT: максимум 5 генераций в день
+                $dailyKey = 'ai-daily:' . auth()->id();
+                Log::info("dailyKey : {$dailyKey }");
+
+                if (RateLimiter::tooManyAttempts($dailyKey, 5)) {
+
+                    return redirect()->back()->with(
+                        'error',
+                        'Ви перевищили денний ліміт AI-генерацій'
+                    );
+                }
+
+                RateLimiter::hit($dailyKey, 86400);
+
+                // LIMIT: не чаще 1 раза в минуту
+                $minuteKey = 'ai-minute:' . auth()->id();
+                Log::info("minuteKey : {$minuteKey}");
+
+                if (RateLimiter::tooManyAttempts($minuteKey, 1)) {
+
+                    $seconds = RateLimiter::availableIn($minuteKey);
+
+                    return redirect()->back()->with(
+                        'error',
+                        "Спробуйте через {$seconds} сек."
+                    );
+                }
+
+                RateLimiter::hit($minuteKey, 60);
+                    
+                $generatedTasks = $geminiService->generateTasks(
+                    $project->title,
+                    $project->description
+                );
+
+                $taskGenerationService->createTasks(
+                    $project,
+                    $generatedTasks
+                );
+
             }
 
             return redirect()->back()->with('success', 'Проєкт успішно створено!');
@@ -69,28 +113,30 @@ class ProjectController extends Controller
     public function listAllUserProjects()
     {
         $userId = auth()->id();
-        // Дістаємо проєкти, де власник — поточний авторизований користувач
-        $projects = Project::where('owner_id', $userId)
-            ->where('is_active', 1)
+
+        $projects = Project::where('is_active', 1)
+            ->where(function ($query) use ($userId) {
+                $query->where('owner_id', $userId) // Владелец проекта
+                // ИЛИ участник команды
+                ->orWhereHas('members', function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                });
+            })
             ->withCount([
-                'tasks as tasks_total' => function ($query) { // Рахуємо загальну кількість активних завдань
+                'tasks as tasks_total' => function ($query) {
                     $query->where('is_active', 1);
                 },
-                'tasks as tasks_completed' => function ($query) { // Рахуємо кількість завершених активних завдань
+                'tasks as tasks_completed' => function ($query) {
                     $query->where('is_active', 1)->where('status', 'done');
                 }
             ])
-            ->orderBy('created_at', 'desc') // За замовчуванням сортуємо від нових до старих
+            ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($project) use ($userId) {
                 $project->is_owner = $project->owner_id === $userId;
                 return $project;
             });
-        
-        debug($projects);
-        
 
-        // Повертаємо React-компонент 'ProjectsList' і передаємо туди масив проєктів
         return Inertia::render('ProjectsList', [
             'projects' => $projects
         ]);
@@ -140,7 +186,7 @@ class ProjectController extends Controller
                 ];
             });
 
-        return Inertia::render('ProjectView', [
+        return Inertia::render('Project', [
             'project' => $project,
             'teamMembers' => $teamMembers,
 
@@ -161,3 +207,10 @@ class ProjectController extends Controller
     }
 
 }
+
+
+// "Система управления обучением"
+// "Веб-приложение для преподавателей и студентов"
+
+// Learning Management System
+// Web Application for Teachers and Students

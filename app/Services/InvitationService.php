@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\Invitation;
 use App\Models\User;
+
 use App\Enums\InvitationStatus;
 use App\Enums\NotificationEvent;
+
 use App\Notifications\SimpleNotification;
+
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -16,13 +19,12 @@ class InvitationService
 {
     public function invite(string $email, Project $project, int $inviterId): void
     {
-        if ($email === auth()->user()->email) {
+        if ($email === auth()->user()->email)
             throw new \Exception('self_invite');
-        }
 
-        if ($project->members()->where('email', $email)->exists()) {
+        if ($project->members()->where('email', $email)->exists())
             throw new \Exception('already_member');
-        }
+
 
         $existingInvite = Invitation::where('project_id', $project->id)
             ->where('email', $email)
@@ -47,16 +49,19 @@ class InvitationService
             'email' => $email,
         ]);
 
-        $recipient = User::where('email', $email)->first();
+        $user = User::where('email', $email)->first();
 
-        if ($recipient) {
+        if ($user) {
             try {
-                $recipient->notify(new SimpleNotification(
-                    type: NotificationEvent::ProjectInvite->value,
-                    title: 'Запрошення в проєкт',
-                    message: "Вас запросили до проєкту: {$project->name}",
-                    targetId: $project->id
-                ));
+                $user->notify(
+                    new SimpleNotification([
+                        'event' => NotificationEvent::ProjectInvite->value,
+                        'title' => 'Запрошення у проєкт',
+                        'message' => 'Вас запросили у проєкт "' . $project->title . '"',
+                        'project_id' => $project->id,
+                        'author_id' => auth()->id(),
+                    ])
+                );
 
                 Log::info('Локальне повідомлення відправлено', ['user_id' => $recipient->id]);
 

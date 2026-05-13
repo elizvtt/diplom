@@ -1,10 +1,11 @@
 <?php
 
-/*
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+
+use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
@@ -55,4 +56,3 @@ class NotificationController extends Controller
         return back();
     }
 }
-*/

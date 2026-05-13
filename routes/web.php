@@ -10,6 +10,8 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\GradeController;
+use App\Http\Controllers\NotificationController;
+
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -83,6 +85,8 @@ Route::middleware('auth')->group(function () {
     // & ФАЙЛЫ
     Route::post('/add/file', [AttachmentController::class, 'store']);
     Route::post('/delete/files/{attachment}', [AttachmentController::class, 'delete']);
+
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
 
 });
 

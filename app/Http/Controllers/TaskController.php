@@ -3,15 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\User;
 use App\Models\TaskAssignee;
 use App\Models\Attachment;
+use App\Models\Project;
+
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
 use App\Enums\TaskReminder;
 use App\Enums\TaskAssigneeStatus;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+
+use App\Notifications\SimpleNotification;
+use App\Enums\NotificationEvent;
+
 
 class TaskController extends Controller
 {
@@ -49,8 +57,6 @@ class TaskController extends Controller
             'files.*.max' => 'Максимальний розмір файлу — 10 MB.',
         ]);
 
-        // debug($validated);
-
         // Створення самого завдання
         $task = Task::create([
             'project_id' => $validated['project_id'],
@@ -67,6 +73,24 @@ class TaskController extends Controller
             'is_active' => 1,
         ]);
 
+        $project = Project::find($task->project_id);
+        $users = $project->members;
+
+        foreach ($users as $user) {
+            // чтобы автор не получал уведомление самому себе
+            if ($user->id === auth()->id()) continue;
+            $user->notify(
+                new SimpleNotification([
+                    'event' => NotificationEvent::TaskCreated->value,
+                    'title' => 'Нове завдання у проєкті',
+                    'message' => 'Створено задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
+                    'project_id' => $task->project_id,
+                    'task_id' => $task->id,
+                    'author_id' => auth()->id(),
+                ])
+            );
+        }
+
         // додавання виконавців
         if (!empty($validated['assignees'])) {
             foreach ($validated['assignees'] as $userId) {
@@ -76,6 +100,18 @@ class TaskController extends Controller
                     'status'  => TaskAssigneeStatus::Assigned,
                     'progress' => 0
                 ]);
+
+                $user = User::find($userId);
+                $user->notify(
+                    new SimpleNotification([
+                        'event' => NotificationEvent::TaskAssigned->value,
+                        'title' => 'Нове завдання',
+                        'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
+                        'project_id' => $task->project_id,
+                        'task_id' => $task->id,
+                        'author_id' => auth()->id(),
+                    ])
+                );
             }
         }
 
@@ -131,10 +167,27 @@ class TaskController extends Controller
         // Знаходимо модель по ID з запиту
         $task = Task::findOrFail($validated['id']);
         
-        $task->update([
-            'status' => $validated['status']
-        ]);
+        $task->update(['status' => $validated['status']]);
 
+        if ($validated['status'] === TaskStatus::Done->value) {
+            $project = Project::find($task->project_id);
+            $users = $project->members;
+
+            foreach ($users as $user) {
+                if ($user->id === auth()->id()) continue;
+
+                $user->notify(
+                    new SimpleNotification([
+                        'event' => NotificationEvent::TaskCompleted->value,
+                        'title' => 'Завдання завершено',
+                        'message' => 'Задачу «' . $task->title . '» завершено',
+                        'project_id' => $task->project_id,
+                        'task_id' => $task->id,
+                        'author_id' => auth()->id(),
+                    ])
+                );
+            }
+        }
         // return back()->with('success', 'Статус оновлено');
         return back();
     }
@@ -165,7 +218,6 @@ class TaskController extends Controller
         ]);
 
         // Оновлення основних полів завдання
-        // Форматуємо description у масив, як ви це робите при створенні
         $task->update([
             'title' => $validated['title'],
             'description' => $validated['description'] ? ['text' => $validated['description']] : null,
@@ -176,7 +228,6 @@ class TaskController extends Controller
             'progress' => $request->has('progress') ? $validated['progress'] : $task->progress,
         ]);
 
-        // Розумне оновлення виконавців
         if ($request->has('assignees')) {
             // Отримуємо ID поточних виконавців з БД
             $currentAssigneeIds = TaskAssignee::where('task_id', $task->id)->pluck('user_id')->toArray();
@@ -201,12 +252,31 @@ class TaskController extends Controller
                     'status'  => TaskAssigneeStatus::Assigned,
                     'progress' => 0
                 ]);
+                
+                $user = User::find($userId);
+                $project = Project::find($task->project_id);
+                
+                if ($user) {
+                    if ($user->id === auth()->id()) continue;
+
+                    $user->notify(new SimpleNotification([
+                        'event' => NotificationEvent::TaskAssigned->value,
+                        'title' => 'Нове завдання',
+                        'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
+                        'project_id' => $task->project_id,
+                        'task_id' => $task->id,
+                        'author_id' => auth()->id(),
+                    ]));
+                }
             }
+            
         }
+
 
         // Повернення відповіді
         return redirect()->back()->with('success', 'Завдання успішно оновлено!');
     }
+
 
     public function deleteTask(Task $task)
     {
