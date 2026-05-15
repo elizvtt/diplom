@@ -55,7 +55,9 @@ class Project extends Model
      */
     public function members()
     {    
-        return $this->belongsToMany(User::class, 'project_members', 'project_id', 'user_id');
+        return $this->belongsToMany(User::class, 'project_members', 'project_id', 'user_id')
+                    ->withPivot('role')
+                    ->wherePivot('is_active', 1);
     }
 
     /**

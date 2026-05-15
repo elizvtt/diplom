@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import MemberRow from '@/Components/Team/MemberRow';
 
@@ -31,7 +31,9 @@ const getStatusChip = (status) => {
     }
 };
 
-export default function Team({ project, inviteLink, invitations }) {
+export default function Team({ project, inviteLink, invitations, teamRoles = [] }) {
+    const { auth } = usePage().props;
+
     const [searchEmail, setSearchEmail] = useState(''); // стейт для email
     const [foundUser, setFoundUser] = useState(null);
     const [searchLoading, setSearchLoading] = useState(false);
@@ -86,6 +88,24 @@ export default function Team({ project, inviteLink, invitations }) {
     const handleRevoke = (inviteId) => {
         if (window.confirm('Ви впевнені, що хочете відкликати це запрошення?')) {
             router.post(`/invitations/${inviteId}/revoke`, {
+                preserveScroll: true,
+            });
+        }
+    };
+
+    // Функція зміни ролі
+    const handleRoleChange = (userId, newRole) => {
+        router.post(`/projects/${project.uuid}/team/${userId}/update`, {
+            role: newRole
+        }, {
+            preserveScroll: true,
+        });
+    };
+
+    // Функція видалення учасника
+    const handleRemoveMember = (userId) => {
+        if (window.confirm('Ви впевнені, що хочете видалити цього учасника з команди?')) {
+            router.post(`/projects/${project.uuid}/team/${userId}/delete`, {}, {
                 preserveScroll: true,
             });
         }
@@ -216,12 +236,16 @@ export default function Team({ project, inviteLink, invitations }) {
                             <MemberRow 
                                 key={member.id} 
                                 user={member}
+                                isOwner={member.id === project.owner_id}
+                                currentUserIsOwner={project.owner_id === auth.user.id}
+                                teamRoles={teamRoles}
+                                onRoleChange={handleRoleChange}
+                                onRemove={handleRemoveMember}
                             />
                         ))}
                     </Box>
 
                     {/* ЗАПРОШЕННЯ */}
-                    {/* ІСТОРІЯ ЗАПРОШЕНЬ (PENDING, EXPIRED, REVOKED) */}
                     {invitations && invitations.length > 0 && (
                         <>
                             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>

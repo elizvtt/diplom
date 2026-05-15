@@ -67,8 +67,8 @@ class SimpleNotification extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-                    ->subject($this->data['title'])
-                    ->line($this->data['message'])
-                    ->action('Переглянути проєкт', url('/projects/' . ($this->data['project_id'] ?? '')));
-    }
+            ->subject($this->data['title'])
+            ->line($this->data['message'])
+            ->action('Переглянути проєкт', url('/projects/' . ($this->data['project_id'] ?? '')));
+}
 }

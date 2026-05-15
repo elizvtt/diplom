@@ -3,10 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\User;
+
 use App\Enums\InvitationStatus;
+use App\Enums\TeamRole;
+
 use Inertia\Inertia;
+
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Validation\Rule;
+use Illuminate\Http\Request;
 
 class TeamController extends Controller
 {
@@ -32,10 +40,20 @@ class TeamController extends Controller
             'project' => $project->uuid
         ]);
 
+        $teamRoles = collect(TeamRole::cases())
+            ->filter(fn (TeamRole $role) => $role !== TeamRole::Owner) // Виключаємо Owner
+            ->map(fn (TeamRole $role) => [
+                'value' => $role->value,
+                'label' => $role->label(),
+            ])
+            ->values()
+            ->toArray();
+
         return Inertia::render('Team', [
             'project' => $project,
             'inviteLink' => $inviteLink,
-            'invitations' => $invitations
+            'invitations' => $invitations,
+            'teamRoles' => $teamRoles,
         ]);
     }
 
@@ -49,7 +67,6 @@ class TeamController extends Controller
 
         return redirect()->back()->with('success', 'Запрошення скасовано.');
     }
-
 
     /**
      * Обробка запиту на приєднання користувача до проєкту за посиланням
@@ -84,5 +101,36 @@ class TeamController extends Controller
 
         return redirect()->route('projects.show', $project->uuid)
             ->with('success', "Ласкаво просимо до команди проєкту {$project->title}!");
+    }
+
+    /**
+     * Зміна ролі учасників
+     */
+    public function updateRole(Request $request, Project $project, User $user)
+    {
+        // тільки власник може змінювати ролі
+        if ($project->owner_id !== auth()->id()) {abort(403, 'Тільки власник проєкту може змінювати ролі');}
+
+        // роль має бути зі списку дозволених в Enum
+        $validated = $request->validate(['role' => ['required', Rule::in(array_column(TeamRole::cases(), 'value'))],]);
+
+        // Оновлення запису в таблиці
+        $project->members()->updateExistingPivot($user->id, ['role' => $validated['role']]);
+
+        return back()->with('success', 'Роль учасника успішно змінено');
+    }
+
+    /**
+     * Видалення учасника з проєкту
+     */
+    public function deleteMembers()
+    {
+        // тільки власник може видаляти
+        if ($project->owner_id !== auth()->id()) {abort(403, 'Тільки власник проєкту може видаляти учасників');}
+
+        // Ставимо is_active = 0 у проміжній таблиці
+        $project->members()->updateExistingPivot($user->id, ['is_active' => 0]);
+
+        return back()->with('success', 'Учасника видалено з команди.');
     }
 }

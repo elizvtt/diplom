@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+
+use App\Enums\UserRole;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +23,7 @@ class AuthController extends Controller
             'full_name' => ['required', 'string', 'max:255'], 
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:student,teacher'], // Проверяем, что роль только из разрешенного списка
+            'role' => ['required', Rule::enum(UserRole::class)], // Проверяем, что роль только из разрешенного списка
         ], [
             'email.unique' => 'Користувач з такою поштою вже існує.', // Кастомные сообщения об ошибках
             'full_name.max' => 'Задовгі ім`я та прізвище',

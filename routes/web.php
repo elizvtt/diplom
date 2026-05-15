@@ -16,15 +16,27 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+use App\Enums\UserRole;
+
 // ОСНОВНА СТОРІНКА
 Route::get('/', function () {
     if (Auth::check()) {
         return app(ProjectController::class)->listAllUserProjects();
     }
 
+    $availableRoles = collect(UserRole::cases())
+        ->filter(fn (UserRole $role) => $role !== UserRole::Admin)
+        ->map(fn (UserRole $role) => [
+            'value' => $role->value,
+            'label' => $role->label(),
+        ])
+        ->values()
+        ->toArray();
+
     return Inertia::render('Auth', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
+        'availableRoles' => $availableRoles,
     ]);
 
 })->name('home');
@@ -69,6 +81,8 @@ Route::middleware('auth')->group(function () {
     
     // ПРИГЛАШЕНИЯ И КОМАНДА
     Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');
+    Route::post('/projects/{project}/team/{user}/delete', [TeamController::class, 'deleteMembers']);
+    Route::post('/projects/{project}/team/{user}/update', [TeamController::class, 'updateRole']);
 
     Route::post('/projects/{project}/invitations', [InvitationController::class, 'invite'])->name('projects.invitations.store');
     Route::post('/projects/{project}/invitations/search', [InvitationController::class, 'searchUser'])->name('projects.invitations.search');

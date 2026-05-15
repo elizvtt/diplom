@@ -14,7 +14,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import GoogleIcon from '@mui/icons-material/Google';
 
 
-export default function Auth() {
+export default function Auth({ canLogin, canRegister, availableRoles = [] }) {
     const [showPassword, setShowPassword] = useState(false);
     const [isLogin, setIsLogin] = useState(true); // состояние для переключения вход/регистрация
     const [passwordTooltipOpen, setPasswordTooltipOpen] = useState(false);
@@ -265,13 +265,16 @@ export default function Auth() {
                             <InputLabel htmlFor="role-select">Роль</InputLabel>
                             <Select
                                 id="role-select"
-                                value={data.role}
+                                value={data.role || ''}
                                 label="Роль"
                                 onChange={handleInputChange('role')}
                             
                             >
-                                <MenuItem value={'student'}>Студент</MenuItem>
-                                <MenuItem value={'teacher'}>Викладач</MenuItem>
+                                {availableRoles.map((role) => (
+                                    <MenuItem key={role.value} value={role.value}>{role.label}</MenuItem>
+                                ))}
+                                {/* <MenuItem value={'student'}>Студент</MenuItem>
+                                <MenuItem value={'teacher'}>Викладач</MenuItem> */}
                             </Select>
                             {getError('role') && <FormHelperText>{getError('role')}</FormHelperText>}
                         </FormControl>
