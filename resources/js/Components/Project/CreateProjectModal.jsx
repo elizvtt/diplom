@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 
 import {
@@ -10,7 +10,10 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
-export default function CreateProjectModal({ open, onClose, onSuccess }) {
+export default function CreateProjectModal({ open, onClose, onSuccess, project }) {
+    // Определяем, режим редактирования это или нет
+    const isEditMode = Boolean(project);
+
     // данные 
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
@@ -19,34 +22,50 @@ export default function CreateProjectModal({ open, onClose, onSuccess }) {
     });
 
     const [warnedAboutLength, setWarnedAboutLength] = useState(false);
+    
+    // Заполняем форму при открытии, если передан project
+    useEffect(() => {
+        if (open && project) {
+            setData({
+                title: project.title || '',
+                description: project.description || '',
+            });
+        } else if (open && !project) {
+            reset(); // Очищаем форму, если это создание нового
+        }
+    }, [open, project]);
 
     // Обробник відправки форми
     const submitProject = (e) => {
         e.preventDefault();
         
-        const MIN_DESC_LENGTH = 20;
+        if (isEditMode) {
+            post(`/projects/${project.uuid}/edit`, {
+                onSuccess: () => { reset(); onClose(); }
+            });
 
-        // проверка для ии
-        if (data.generate_ai_tasks && data.description.trim().length < MIN_DESC_LENGTH && !warnedAboutLength) {
-            onSuccess(
-                'Для якісної генерації завдань (ШІ) рекомендуємо додати детальніший опис проєкту',
-                'warning'
-            );
-            setWarnedAboutLength(true);
-            return; 
+        } else {
+            const MIN_DESC_LENGTH = 20;
+    
+            // проверка для ии
+            if (data.generate_ai_tasks && data.description.trim().length < MIN_DESC_LENGTH && !warnedAboutLength) {
+                onSuccess('Для якісної генерації завдань (ШІ) рекомендуємо додати детальніший опис проєкту', 'warning');
+                setWarnedAboutLength(true);
+                return; 
+            }
+    
+            post('/add/project', {
+                onSuccess: (page) => {
+                    reset();
+                    onClose();
+                    // Дістаємо повідомлення, яке прийшло з контролера
+                    const serverMessage = page.props.flash?.success || 'Успіх!';
+    
+                    onSuccess(serverMessage, 'success');
+                    setWarnedAboutLength(false);
+                },
+            });
         }
-
-        post('/add/project', {
-            onSuccess: (page) => {
-                reset();
-                onClose();
-                // Дістаємо повідомлення, яке прийшло з контролера
-                const serverMessage = page.props.flash?.success || 'Успіх!';
-
-                onSuccess(serverMessage, 'success');
-                setWarnedAboutLength(false);
-            },
-        });
         
     };
 
@@ -59,7 +78,9 @@ export default function CreateProjectModal({ open, onClose, onSuccess }) {
             PaperProps={{ sx: { borderRadius: 3 } }}
         >
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-                <Typography variant="h6" fontWeight="bold">Створення нового проєкту</Typography>
+                <Typography variant="h6" fontWeight="bold">
+                    {isEditMode ? 'Редагування проєкту' : 'Створення нового проєкту'}
+                </Typography>
                 <IconButton onClick={onClose} size="small">
                     <CloseIcon />
                 </IconButton>
@@ -99,37 +120,39 @@ export default function CreateProjectModal({ open, onClose, onSuccess }) {
                         helperText={errors.description}
                     />
 
-                    {/* БЛОК ГЕНЕРАЦІЇ ШІ */}
-                    <Box 
-                        sx={{ 
-                            p: 2, 
-                            bgcolor: data.generate_ai_tasks ? '#DDDBEF' : 'background.default',
-                            borderRadius: 2, 
-                            border: '1px dashed', 
-                            // borderColor: data.generate_ai_tasks ? '#6600cc' : 'divider',
-                            borderColor: '#6600cc',
-                            transition: 'all 0.3s ease'
-                        }}
-                    >
-                        <FormControlLabel
-                            control={
-                                <Switch 
-                                    checked={data.generate_ai_tasks} 
-                                    onChange={(e) => setData('generate_ai_tasks', e.target.checked)}
-                                    color="default"
-                                />
-                            }
-                            label={
-                                <Typography fontWeight="bold" sx={{ display: 'flex', gap: 1, alignItems: 'center'}}>
-                                    <AutoAwesomeIcon fontSize="small" sx={{ color: '#6600cc'}} />
-                                    Згенерувати структуру завдань (ШІ)
-                                </Typography>
-                            }
-                        />
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 5, mt: -0.5 }}>
-                            Система проаналізує назву та опис, щоб автоматично створити базовий план завдань для цього проєкту.
-                        </Typography>
-                    </Box>
+                    {!isEditMode && (
+                        // БЛОК ГЕНЕРАЦІЇ ШІ
+                        <Box 
+                            sx={{ 
+                                p: 2, 
+                                bgcolor: data.generate_ai_tasks ? '#DDDBEF' : 'background.default',
+                                borderRadius: 2, 
+                                border: '1px dashed', 
+                                // borderColor: data.generate_ai_tasks ? '#6600cc' : 'divider',
+                                borderColor: '#6600cc',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            <FormControlLabel
+                                control={
+                                    <Switch 
+                                        checked={data.generate_ai_tasks} 
+                                        onChange={(e) => setData('generate_ai_tasks', e.target.checked)}
+                                        color="default"
+                                    />
+                                }
+                                label={
+                                    <Typography fontWeight="bold" sx={{ display: 'flex', gap: 1, alignItems: 'center'}}>
+                                        <AutoAwesomeIcon fontSize="small" sx={{ color: '#6600cc'}} />
+                                        Згенерувати структуру завдань (ШІ)
+                                    </Typography>
+                                }
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 5, mt: -0.5 }}>
+                                Система проаналізує назву та опис, щоб автоматично створити базовий план завдань для цього проєкту.
+                            </Typography>
+                        </Box>
+                    )}
                 </DialogContent>
                 
                 <DialogActions sx={{ p: 2, px: 3 }}>
@@ -153,7 +176,10 @@ export default function CreateProjectModal({ open, onClose, onSuccess }) {
                                 sx={{ background: '#475c4b', color: '#fff', '&:hover': { background: '#354638' } }}
                                 disabled={processing || !data.title.trim()}
                             >
-                                {processing ? 'Створення...' : 'Створити проєкт'}
+                                {isEditMode 
+                                    ? (processing ? 'Збереження...' : 'Зберегти') 
+                                    : (processing ? 'Створення...' : 'Створити проєкт')
+                                }
                             </Button>
                         </span>
                     </Tooltip>

@@ -23,6 +23,9 @@ use App\Enums\NotificationEvent;
 
 class TaskController extends Controller
 {
+    /**
+     * СТворення завдання
+     */
     public function createTask(Request $request)
     {
         // Валідація даних
@@ -87,6 +90,7 @@ class TaskController extends Controller
                     'project_id' => $task->project_id,
                     'task_id' => $task->id,
                     'author_id' => auth()->id(),
+                    'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
                 ])
             );
         }
@@ -110,6 +114,7 @@ class TaskController extends Controller
                         'project_id' => $task->project_id,
                         'task_id' => $task->id,
                         'author_id' => auth()->id(),
+                        'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
                     ])
                 );
             }
@@ -157,6 +162,9 @@ class TaskController extends Controller
         });
     }
 
+    /**
+     * Оновлення статусу(бєклог, туду, инпрогрес и тд.)
+     */
     public function updateStatus(Request $request)
     {
         $validated = $request->validate([
@@ -184,6 +192,7 @@ class TaskController extends Controller
                         'project_id' => $task->project_id,
                         'task_id' => $task->id,
                         'author_id' => auth()->id(),
+                        'url' => url('/projects/' . $project->uuid),
                     ])
                 );
             }
@@ -192,9 +201,11 @@ class TaskController extends Controller
         return back();
     }
 
+    /**
+     * Оновлення завдання
+     */
     public function updateTask(Request $request, Task $task)
     {
-        // dd($request->only('assignees'));
         // Валідація вхідних даних 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -259,13 +270,15 @@ class TaskController extends Controller
                 if ($user) {
                     if ($user->id === auth()->id()) continue;
 
-                    $user->notify(new SimpleNotification([
+                    $user->notify(
+                    new SimpleNotification([
                         'event' => NotificationEvent::TaskAssigned->value,
                         'title' => 'Нове завдання',
                         'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
                         'project_id' => $task->project_id,
                         'task_id' => $task->id,
                         'author_id' => auth()->id(),
+                        'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
                     ]));
                 }
             }
@@ -277,12 +290,14 @@ class TaskController extends Controller
         return redirect()->back()->with('success', 'Завдання успішно оновлено!');
     }
 
-
+    /**
+     * ВИдалення завадння
+     */
     public function deleteTask(Task $task)
     {
         // Перевіряємо, чи поточний користувач є автором завдання
         if ($task->creator_id !== auth()->id()) {
-            abort(403, 'У вас немає прав для видалення чужого завдання.');
+            abort(403, 'У вас немає прав для видалення чужого завдання');
         }
 
         $task->update(['is_active' => 0]);

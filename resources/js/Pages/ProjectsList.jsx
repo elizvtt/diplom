@@ -36,6 +36,7 @@ export default function ProjectsList({ projects }) {
 
     // модальное окно для создания проєкта
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingProject, setEditingProject] = useState(null);
 
     // Стейти для відкриття випадаючих меню
     const [filterMenuAnchor, setFilterMenuAnchor] = useState(null);
@@ -68,10 +69,14 @@ export default function ProjectsList({ projects }) {
     };
 
     // обработчики ui    
-    const handleOpenModal = () => setIsModalOpen(true);
+    const handleOpenModal = (project = null) => {
+        setEditingProject(project);
+        setIsModalOpen(true);
+    }
     const handleCloseModal = (event, reason) => {
         if (reason && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return;
         setIsModalOpen(false);
+        setTimeout(() => setEditingProject(null), 300);
     };
     
     return (
@@ -92,7 +97,7 @@ export default function ProjectsList({ projects }) {
 
                 handleChange={handleChange}
                 handleClearAll={handleClearAll}
-                handleOpenModal={handleOpenModal}
+                handleOpenModal={() => handleOpenModal()}
 
                 filterMenuAnchor={filterMenuAnchor}
                 setFilterMenuAnchor={setFilterMenuAnchor}
@@ -102,7 +107,7 @@ export default function ProjectsList({ projects }) {
             />
 
                 
-            {/* ПРОЭКТЫ */}
+            {/* ПРОEКТЫ */}
             <Box>
                 {processedProjects.length === 0 ? (
                     // EMPTY state
@@ -130,7 +135,7 @@ export default function ProjectsList({ projects }) {
                             variant="contained" 
                             size="large" 
                             startIcon={<AddIcon />}
-                            onClick={handleOpenModal}
+                            onClick={() => handleOpenModal()} //для создания вызываем без аргумента
                         >
                             Створити проєкт
                         </Button>
@@ -141,7 +146,7 @@ export default function ProjectsList({ projects }) {
                             <Grid container spacing={3}>
                                 {processedProjects.map((project) => (
                                     <Grid item key={project.id} xs={12} sm={6} md={4}>
-                                    <ProjectCard project={project} />
+                                    <ProjectCard project={project} onEdit={() => handleOpenModal(project)}/>
                                     </Grid>
                                 ))}
                             </Grid>
@@ -152,6 +157,7 @@ export default function ProjectsList({ projects }) {
                                     <ProjectListItem 
                                         key={project.id}
                                         project={project}
+                                        onEdit={() => handleOpenModal(project)}
                                     />
                                 ))}
                             </Box>
@@ -164,6 +170,7 @@ export default function ProjectsList({ projects }) {
             <CreateProjectModal
                 open={isModalOpen}
                 onClose={handleCloseModal}
+                project={editingProject}
                 onSuccess={(message, severity = 'success') => {
                     setSnackbar({
                         open: true,

@@ -15,86 +15,60 @@ class SimpleNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        $channels = [];
+        
+        // Отримуємо назву події (наприклад 'grade_changed')
+        $eventName = $this->data['event'] ?? null;
+
+        if (!$eventName) {
+            // Якщо подію не передали, відправляємо тільки в БД за замовчуванням
+            return ['database']; 
+        }
+
+        // Отримуємо налаштування юзера (relation notificationSettings)
+        $settings = $notifiable->notificationSettings;
+
+        // 1. Перевірка для бази даних (сповіщення на сайті)
+        $dbSettings = $settings->where('channel', 'database')->first();
+        if ($dbSettings && isset($dbSettings->events[$eventName]) && $dbSettings->events[$eventName] === true) {
+            $channels[] = 'database';
+        }
+
+        // // Перевірка для Email (пошта)
+        // // Спочатку перевіряємо глобальний перемикач $notifiable->email_notification
+        // if ($notifiable->email_notification) {
+        //     $mailSettings = $settings->where('channel', 'mail')->first();
+        //     if ($mailSettings && isset($mailSettings->events[$eventName]) && $mailSettings->events[$eventName] === true) {
+        //         $channels[] = 'mail';
+        //     }
+        // }
+
+        return $channels;
+    }
+    
+    /**
+     * Дані для збереження в базу даних
+     */
+    public function toDatabase($notifiable)
+    {
+        return [
+            'event' => $this->data['event'],
+            'title' => $this->data['title'],
+            'message' => $this->data['message'],
+            'project_id' => $this->data['project_id'] ?? null,
+            'author_id' => $this->data['author_id'] ?? null,
+            'url' => $this->data['url'] ?? null,
+        ];
     }
 
-    public function toDatabase(object $notifiable): array
+    /**
+     * Дані для відправки на пошту
+     */
+    public function toMail($notifiable)
     {
-        return $this->data;
+        return (new MailMessage)
+                    ->subject($this->data['title'])
+                    ->line($this->data['message'])
+                    ->action('Переглянути проєкт', url('/projects/' . ($this->data['project_id'] ?? '')));
     }
 }
-
-// namespace App\Notifications;
-
-// use Illuminate\Bus\Queueable;
-// use Illuminate\Notifications\Notification;
-// use Illuminate\Notifications\Messages\MailMessage;
-
-// class SimpleNotification extends Notification
-// {
-//     use Queueable;
-
-//     // В конструктор передаем всё, что хотим
-//     public function __construct(
-//         public string $type, 
-//         public string $title, 
-//         public string $message,
-//         public ?int $targetId = null
-//     ) {}
-
-//     public function via(object $notifiable): array
-//     {
-//         $channels = [];
-
-//         // Проверяем: хочет ли пользователь получать это в базу (колокольчик)?
-//         if ($notifiable->prefersNotification($this->type, 'database')) {
-//             $channels[] = 'database';
-//         }
-
-//         // Проверяем: хочет ли пользователь получать это на Email?
-//         // if ($notifiable->prefersNotification($this->type, 'mail')) {
-//         //     $channels[] = 'mail';
-//         // }
-
-//         return $channels;
-//     }
-
-//     public function toDatabase(object $notifiable): array
-//     {
-//         return [
-//             'type' => $this->type,
-//             'title' => $this->title,
-//             'message' => $this->message,
-//             'target_id' => $this->targetId,
-//         ];
-//     }
-
-//     public function toMail(object $notifiable): MailMessage
-//     {
-//         return (new MailMessage)
-//             ->subject($this->title)
-//             ->line($this->message)
-//             ->action('Переглянути', url('/invite/' . $this->targetId)) // Тут targetId може бути токеном або ID
-//             ->line('Дякуємо, що користуєтесь нашим сервісом!');
-//     }
-// }
-
-/*
-
-пример коментария:
-// Событие 1: Изменили оценку
-$user->notify(new SimpleNotification(
-    type: 'grade_changed',
-    title: 'Оценка обновлена',
-    message: 'Преподаватель поставил вам 5.',
-    targetId: $task->id
-));
-
-// Событие 2: Новый комментарий
-$user->notify(new SimpleNotification(
-    type: 'new_comment',
-    title: 'Новый комментарий',
-    message: 'Иван ответил на ваше сообщение.',
-    targetId: $comment->id
-));
-*/

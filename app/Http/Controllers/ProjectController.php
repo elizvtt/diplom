@@ -206,11 +206,80 @@ class ProjectController extends Controller
         ]);
     }
 
+    /**
+     * Видалення проєкту
+     */
+    public function deleteProject(Project $project)
+    {
+        // Перевірка прав
+        if ($project->owner_id !== auth()->id()) {
+            return redirect()->back()->with('error', 'У вас немає прав для видалення цього проєкту.');
+        }
+
+        try {
+            $project->update([
+                'is_active' => 0,
+            ]);
+
+            Log::info("Проєкт видалено", [
+                'project_id' => $project->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return redirect()->back()->with('success', 'Проєкт успішно видалено');
+
+        } catch (\Exception $e) {
+            Log::error("Помилка при видаленні проєкту", [
+                'project_id' => $project->id,
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Виникла технічна помилка при видаленні проєкту');
+        }
+    }
+    
+    /**
+     * Редагування назви та опису проєкту
+     */
+    public function editProject(Request $request, Project $project)
+    {
+        if ($project->owner_id !== auth()->id()) {
+            return redirect()->back()->with('error', 'У вас немає прав для редагування цього проєкту.');
+        }
+
+        // Валідація даних
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'], // Збільшив ліміт для опису, якщо потрібно
+        ], [
+            'title.required' => 'Введіть назву проєкту',
+            'title.max' => 'Надто довга назва проєкту',
+            'description.max'  => 'Опис проєкту занадто довгий',
+        ]);
+
+        try {
+            // Оновлюємо проєкт
+            $project->update([
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+            ]);
+
+            Log::info("Проєкт успішно оновлено", [
+                'project_id' => $project->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return redirect()->back()->with('success', 'Проєкт успішно оновлено');
+
+        } catch (\Exception $e) {
+            Log::error("Помилка при оновленні проєкту", [
+                'project_id' => $project->id,
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Виникла технічна помилка при оновленні проєкту');
+        }
+
+    }
+
 }
-
-
-// "Система управления обучением"
-// "Веб-приложение для преподавателей и студентов"
-
-// Learning Management System
-// Web Application for Teachers and Students

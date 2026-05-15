@@ -2,21 +2,19 @@ import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import DOMPurify from 'dompurify';
 import { priorityColors } from '@/utils/constants';
+import ActionMenu from '@/Components/ActionMenu';
 
 import {
     Box, Card, CardContent, Typography, IconButton,
-    Tooltip, Avatar, AvatarGroup, Collapse,
-    Menu, MenuItem, ListItemIcon, ListItemText, List, ListItem
+    Tooltip, Avatar, AvatarGroup, Collapse, 
+    ListItemIcon, ListItemText, List, ListItem
 } from '@mui/material';
 
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import FlagIcon from '@mui/icons-material/Flag';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight'; // Іконка підзадачі
 
 const getReminderDate = (task) => {
@@ -52,34 +50,14 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
     const reminderDate = getReminderDate(task);
 
     const priority = priorities.find(p => p.id === task.priority);
-    // Стан для випадаючого меню
-    const [anchorEl, setAnchorEl] = useState(null);
-    const menuOpen = Boolean(anchorEl);
-
-    // Відкриття меню
-    const handleMenuOpen = (e) => {
-        e.stopPropagation(); // Щоб не спрацьовував клік по самій картці
-        setAnchorEl(e.currentTarget);
-    };
-
-    // Закриття меню
-    const handleMenuClose = (e) => {
-        if (e) e.stopPropagation();
-        setAnchorEl(null);
-    };
 
     // Обробник "Редагувати"
     const handleEdit = (e) => {
-        e.stopPropagation();
-        handleMenuClose();
         if (onClick) onClick(task); // Викликаємо функцію відкриття TaskView з батьківського компонента
     };
 
     // Обробник "Видалити"
     const handleDelete = (e) => {
-        e.stopPropagation();
-        handleMenuClose();
-        
         if (window.confirm('Ви впевнені, що хочете видалити це завдання?')) {
             // Відправляємо запит на видалення
             router.post(`/tasks/${task.id}/delete`, {}, {
@@ -105,7 +83,7 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
                 '&:hover': {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     borderColor: 'secondary.main',
-                    '& .task-options': { opacity: 1 }
+                    '& .action-menu-trigger': { opacity: 1 }
                 },
                 borderRadius: 3,
                 border: '1px solid #e2e8f0',
@@ -114,96 +92,59 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
             }}
         >
             <CardContent sx={{ p: 2, '&:last-child': { pb: 1.5 } }}>
-                {/* <Box sx={{ cursor: 'pointer', mb: 1 }} > */}
-                    {/* HEADER */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                {/* HEADER */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Tooltip title="Позначити як виконане">
-                                <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onDrop(null, 'done', task.id);
-                                    }}
-                                    sx={{
-                                        color: task.status === 'done'
-                                            ? 'success.main'
-                                            : 'action.disabled',
-                                        ml: -1
-                                    }}
-                                >
-                                    {task.status === 'done'
-                                        ? <CheckCircleIcon />
-                                        : <CheckCircleOutlineOutlinedIcon />
-                                    }
-                                </IconButton>
-                            </Tooltip>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Tooltip title="Позначити як виконане">
+                            <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDrop(null, 'done', task.id);
+                                }}
+                                sx={{
+                                    color: task.status === 'done'
+                                        ? 'success.main'
+                                        : 'action.disabled',
+                                    ml: -1
+                                }}
+                            >
+                                {task.status === 'done'
+                                    ? <CheckCircleIcon />
+                                    : <CheckCircleOutlineOutlinedIcon />
+                                }
+                            </IconButton>
+                        </Tooltip>
 
-                            <Typography variant="subtitle2" fontWeight="700">
-                                {task.title}
-                            </Typography>
-                        </Box>
-
-                        <IconButton
-                            className="task-options"
-                            size="small"
-                            // onClick={(e) => {e.stopPropagation(); handleMenuOpen}}
-                            onClick={handleMenuOpen}
-                            sx={{
-                                opacity: 0,
-                                transition: 'opacity 0.2s',
-                                bgcolor: 'rgba(255,255,255,0.8)'
-                            }}
-                        >
-                            <MoreVertIcon fontSize="small" />
-                        </IconButton>
-                        <Menu 
-                            anchorEl={anchorEl}
-                            open={menuOpen}
-                            onClose={handleMenuClose}
-                            onClick={(e) => e.stopPropagation()} // Блокуємо кліки всередині меню
-                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                            PaperProps={{
-                                elevation: 3,
-                                sx: { minWidth: 150, borderRadius: 2, mt: 0.5 }
-                            }}
-                        >
-                            <MenuItem onClick={handleEdit}>
-                                <ListItemIcon>
-                                    <EditIcon fontSize="small" />
-                                </ListItemIcon>
-                                <ListItemText>Редагувати</ListItemText>
-                            </MenuItem>
-                            <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-                                <ListItemIcon>
-                                    <DeleteIcon fontSize="small" color="error" />
-                                </ListItemIcon>
-                                <ListItemText>Видалити</ListItemText>
-                            </MenuItem>
-                        </Menu>
+                        <Typography variant="subtitle2" fontWeight="700">
+                            {task.title}
+                        </Typography>
                     </Box>
 
-                    {/* DESCRIPTION */}
-                    {task.description && (
-                        <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{
-                                mb: 2,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden'
-                            }}
-                            dangerouslySetInnerHTML={{
-                                __html: DOMPurify.sanitize(task.description?.text)
-                            }}
-                        />
-                    )}
+                    <ActionMenu
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                    />
+                </Box>
 
-                {/* </Box> */}
+                {/* DESCRIPTION */}
+                {task.description && (
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                            mb: 2,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                        }}
+                        dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(task.description?.text)
+                        }}
+                    />
+                )}
 
                 {/* FOOTER */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -249,21 +190,34 @@ export default function TaskCard({ task, priorities, openedSubtasks, toggleSubta
                             </Typography>
                         ) : (
                             <>
-                                <CalendarMonthIcon sx={{ fontSize: 14 }} />
-                                <Typography variant="caption">
-                                    {new Date(task.date_start).toLocaleDateString('uk-UA', {
-                                        day: 'numeric',
-                                        month: 'short'
-                                    })}
-                                    {' → '}
-                                    {task.date_end
-                                        ? new Date(task.date_end).toLocaleDateString('uk-UA', {
-                                            day: 'numeric',
-                                            month: 'short'
-                                        })
-                                        : ''
-                                    }
-                                </Typography>
+                                {/* Перевіряємо, чи немає обох дат */}
+                                {!task.date_start && !task.date_end ? (
+                                    <Tooltip title="Встановіть дати">
+                                        <CalendarMonthIcon sx={{ fontSize: 14 }} />
+                                    </Tooltip>
+                                ) : (
+                                    /* Якщо є хоча б одна дата, виводимо як раніше */
+                                    <>
+                                        <CalendarMonthIcon sx={{ fontSize: 14 }} />
+                                        <Typography variant="caption">
+                                            {task.date_start
+                                                ? new Date(task.date_start).toLocaleDateString('uk-UA', {
+                                                    day: 'numeric',
+                                                    month: 'short'
+                                                })
+                                                : ''
+                                            }
+                                            {' → '}
+                                            {task.date_end
+                                                ? new Date(task.date_end).toLocaleDateString('uk-UA', {
+                                                    day: 'numeric',
+                                                    month: 'short'
+                                                })
+                                                : ''
+                                            }
+                                        </Typography>
+                                    </>
+                                )}
                             </>
                         )}
                     </Box>

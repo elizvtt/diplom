@@ -27,6 +27,6 @@ export const EVENT_LABELS = {
     task_created: 'Створено нове завдання у проєкті',
     grade_changed: 'Оцінку змінено',
     new_comment: 'Новий коментар',
-    deadline_risk: 'Ризик дедлайну',
+    deadline_risk: 'Ризик зриву дедлайну',
     project_invite: 'Запрошення до проєкту'
 };

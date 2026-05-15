@@ -18,13 +18,14 @@ class ProfileController extends Controller
             'auth' => [
                 'user' => $request->user(),
             ],
-            // Отримуємо 2 рядки (database та mail)
             'notificationSettingsList' => $request->user()->notificationSettings()->get(),
         ]);
     }
 
 
-    // Зберігає зміни
+    /**
+     * Оновлення профлю користувача
+     */
     public function update(Request $request)
     {
         $user = $request->user();
@@ -37,12 +38,12 @@ class ProfileController extends Controller
             'delete_avatar' => 'nullable|boolean',
             'settings' => 'array',
             'settings.*.id' => 'required|exists:notification_settings,id',
-            'settings.*.is_enabled' => 'boolean',
+            'settings.*.events' => 'required|array',
+            'settings.*.events.*' => 'boolean',
         ]);
 
 
         if ($request->input('delete_avatar') == true) { // Видалення аватарки
-
             if ($user->avatar_path) {
                 Storage::disk('public')->delete($user->avatar_path);
                 $user->avatar_path = null;
@@ -69,13 +70,21 @@ class ProfileController extends Controller
         $user->email_notification = $validated['email_notification'] ? 1 : 0;
         $user->save();
 
-        // Оновлення таблиці notification_settings (якщо прийшли налаштування)
+        // Оновлення таблиці notification_settings
         if (isset($validated['settings'])) {
             foreach ($validated['settings'] as $settingData) {
-                if (array_key_exists('is_enabled', $settingData)) {
-                    $user->notificationSettings()->where('id', $settingData['id'])->update([
-                        'is_enabled' => $settingData['is_enabled'] ? 1 : 0
-                    ]);
+                if (isset($settingData['events'])) {
+                    
+                    // Конвертуємо всі рядкові "true"/"false"
+                    $cleanEvents = [];
+                    foreach ($settingData['events'] as $key => $value) {
+                        $cleanEvents[$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                    }
+
+                    // Оновлюємо поле 'events'
+                    $user->notificationSettings()
+                         ->where('id', $settingData['id'])
+                         ->update([ 'events' => $cleanEvents ]);
                 }
             }
         }

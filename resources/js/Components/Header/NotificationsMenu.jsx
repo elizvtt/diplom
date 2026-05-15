@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { router } from '@inertiajs/react';
 
 import NotificationItem from '@/Components/Header/NotificationItem';
 
@@ -8,14 +9,15 @@ import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 
 // Импорты MUI компонентов
 import {
-    Box, Badge, IconButton, Typography,
+    Box, Badge, IconButton, Typography, Button,
     Dialog, DialogTitle, DialogContent, Chip, Popover
 } from '@mui/material';
 
 // Импорты иконок
 import CloseIcon from '@mui/icons-material/Close';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // Иконка календаря
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 
 export default function NotificationsMenu({ user, notifications }) {
 
@@ -42,6 +44,14 @@ export default function NotificationsMenu({ user, notifications }) {
     const handleCloseCalendar = () => setCalendarAnchorEl(null);
     const handleClearDate = () => setSelectedDate(null);
 
+    // Функція "Відмітити всі як прочитані"
+    const handleMarkAllAsRead = () => {
+        router.post('/notifications/read-all', {}, {
+            preserveScroll: true,
+            // onSuccess: () => {}
+        });
+    };
+
     return (
         <>
             <IconButton size="large" color="inherit" onClick={() => setIsOpen(true)}>
@@ -59,16 +69,27 @@ export default function NotificationsMenu({ user, notifications }) {
                 PaperProps={{ sx: { borderRadius: 3 } }}
             >
                 {/* ШАПКА МОДАЛКИ*/}
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', pb: 1 }}>
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', pb: 1 }}>
                     <Typography variant="h5" fontWeight="bold">
                         Сповіщення
                     </Typography>
-                    <IconButton 
-                        onClick={() => setIsOpen(false)} 
-                        sx={{ position: 'absolute', right: 12, top: 12 }}
-                    >
-                        <CloseIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {unreadCount > 0 && (
+                            <Button 
+                                size="small"
+                                title='Відмітити всі повідомлення як прочитані'
+                                startIcon={<DoneAllIcon />} 
+                                onClick={handleMarkAllAsRead}
+                                color="text.secondary"
+                                sx={{ '&:hover': { color: "secondary.main" } }}
+                            >
+                                Прочитати всі
+                            </Button>
+                        )}
+                        <IconButton onClick={() => setIsOpen(false)}>
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
                 </DialogTitle>
 
                 {/* КОНТЕНТ (Фильтры и список) */}
@@ -149,7 +170,11 @@ export default function NotificationsMenu({ user, notifications }) {
                     </Popover>
 
                     {/* КАРТОЧКА УВЕДОМЛЕНИЯ */}
-                    <NotificationItem notifications={filtered} isFiltered={statusFilter !== 'all' || selectedDate} />
+                    <NotificationItem 
+                        notifications={filtered} 
+                        isFiltered={statusFilter !== 'all' || selectedDate} 
+                        closeModal={() => setIsOpen(false)}
+                    />
 
                 </DialogContent>
             </Dialog>

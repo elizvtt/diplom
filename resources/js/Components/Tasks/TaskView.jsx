@@ -49,6 +49,7 @@ export default function TaskView({ task, project, teamMembers, priorities, statu
         });
 
     }, [task]);
+    
 
     const handleSave = () => {
         transform((data) => ({

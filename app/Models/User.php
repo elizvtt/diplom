@@ -110,6 +110,21 @@ class User extends Authenticatable
         return $this->hasMany(NotificationSetting::class);
     }
 
+    public function prefersNotification(string $event, string $channel): bool
+    {
+        $setting = $this->notificationSettings()
+            ->firstWhere('channel', $channel);
+
+        // Если настроек нет - разрешаем
+        if (!$setting) return true;
+
+        // events - JSON поле
+        $events = $setting->events ?? [];
+
+        // Если событие отсутствует - разрешаем
+        return $events[$event] ?? true;
+    }
+
     public function grades()
     {
         return $this->hasMany(Grade::class);

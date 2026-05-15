@@ -10,15 +10,18 @@ import ListView from '@/Components/Project/ListView';
 import CalendarView from '@/Components/Project/CalendarView';
 import useLocalStorage from '@/hooks/useLocalStorage';
 
-import { Box, Typography, Button, Tabs, Tab } from '@mui/material';
+import { Box, Typography, Button, Tabs, Tab, IconButton } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import GroupIcon from '@mui/icons-material/Group';
 import ViewKanbanIcon from '@mui/icons-material/ViewKanban';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 export default function ProjectView({ project, teamMembers, statuses, priorities, reminders }) {
+
+    const [backUrl, setBackUrl] = useState('/'); // Стейт для зберігання шляху повернення
 
     // Використовуємо хук для зберігання ВСІХ вкладок проектів
     const [allTabs, setAllTabs] = useLocalStorage('activeProjectTabs', {});
@@ -41,6 +44,40 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
     useEffect(() => {
         setTasks(project.tasks);
     }, [project.tasks]); // Як тільки пропси оновляться, стейт синхронізується
+
+    useEffect(() => {
+        // Читаємо GET-параметри з поточного URL
+        const params = new URLSearchParams(window.location.search);
+        const taskIdFromUrl = params.get('task_id');
+
+        // Якщо в URL є task_id і завдання вже завантажені
+        if (taskIdFromUrl && tasks.length > 0) {
+            // Спочатку шукаємо серед головних завдань
+            let taskToOpen = tasks.find(t => t.id === parseInt(taskIdFromUrl));
+
+            // Якщо не знайшли, шукаємо серед підзадач
+            if (!taskToOpen) {
+                for (const task of tasks) {
+                    if (task.subtasks && task.subtasks.length > 0) {
+                        const foundSub = task.subtasks.find(s => s.id === parseInt(taskIdFromUrl));
+                        if (foundSub) {
+                            taskToOpen = foundSub;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Якщо завдання знайдено - відкриваємо його
+            if (taskToOpen) {
+                console.log("Відкриття завдання з URL:", taskToOpen.id);
+                setSelectedTask(taskToOpen);
+                setIsDetailsModalOpen(true);
+
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }, [tasks]);
 
     const handleTabChange = (event, newValue) => {
         setAllTabs({
@@ -121,9 +158,19 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
 
                 {/* Хедер сторінки */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" fontWeight="bold">
-                        {project.title}
-                    </Typography>
+                    <Box sx={{ display: 'flex' }}>
+                        <IconButton
+                            title='Повернутися'
+                            component={Link}
+                            href={backUrl}
+                            sx={{ mr: 2, bgcolor: 'background.paper', boxShadow: 1 }}
+                        >
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <Typography variant="h4" fontWeight="bold">
+                            {project.title}
+                        </Typography>
+                    </Box>
                     
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <Button

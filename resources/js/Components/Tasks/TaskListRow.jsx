@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { statusColors, priorityColors } from '@/utils/constants';
+import ActionMenu from '@/Components/ActionMenu';
 
 import { 
     TableRow, TableCell, IconButton, Tooltip, Menu, MenuItem, 
     ListItemIcon, ListItemText, Box, Typography, Chip, AvatarGroup, 
-    Avatar, LinearProgress, Collapse, Table, TableBody 
+    Avatar, LinearProgress,
 } from '@mui/material';
 
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -24,32 +25,15 @@ import CircleIcon from '@mui/icons-material/Circle';
 export const TaskListRow = ({ task, level = 0,priorities, statuses, onStatusChange, onClick, onDeleteTask, isExpandable, isExpanded, onToggleExpand }) => {
     console.log('task: ', task);
     const priority = priorities.find(p => p.id === task.priority);
-   // Стейт для ГОЛОВНОГО меню
-    const [optionsAnchor, setOptionsAnchor] = useState(null);
     // Стейт для МЕНЮ СТАТУСІВ
     const [statusAnchor, setStatusAnchor] = useState(null);
 
-    // --- ОБРОБНИКИ МЕНЮ РЕДАГУВАННЯ/ВИДАЛЕННЯ
-    const handleOptionsOpen = (e) => {
-        e.stopPropagation();
-        setOptionsAnchor(e.currentTarget);
-    };
-
-    const handleOptionsClose = (e) => {
-        if (e) e.stopPropagation();
-        setOptionsAnchor(null);
-    };
-
+    // МЕНЮ РЕДАГУВАННЯ/ВИДАЛЕННЯ
     const handleEdit = (e) => {
-        e.stopPropagation();
-        handleOptionsClose();
         if (onClick) onClick(); 
     };
 
     const handleDelete = (e) => {
-        e.stopPropagation();
-        handleOptionsClose();
-        
         if (window.confirm('Ви впевнені, що хочете видалити це завдання?')) {
             router.post(`/tasks/${task.id}/delete`, {}, {
                 preserveScroll: true,
@@ -60,7 +44,7 @@ export const TaskListRow = ({ task, level = 0,priorities, statuses, onStatusChan
         }
     };
 
-    // --- ОБРОБНИКИ ДЛЯ СТАТУСУ (Зліва) ---
+    // ОБРОБНИКИ ДЛЯ СТАТУСУ
     const handleStatusMenuOpen = (e) => {
         e.stopPropagation();
         setStatusAnchor(e.currentTarget); // Прив'язуємо меню до лівої іконки
@@ -86,7 +70,7 @@ export const TaskListRow = ({ task, level = 0,priorities, statuses, onStatusChan
             }}
             sx={{ 
                 cursor: 'pointer',
-                '&:hover .task-options': { opacity: 1 },
+                '&:hover .action-menu-trigger': { opacity: 1 },
                 '& > *': { borderBottom: 'unset' } 
             }}
         >
@@ -231,39 +215,10 @@ export const TaskListRow = ({ task, level = 0,priorities, statuses, onStatusChan
 
             {/* 7. Опції */}
             <TableCell align="right" sx={{ width: '50px' }}>
-                <IconButton
-                    className="task-options"
-                    size="small"
-                    onClick={handleOptionsOpen}
-                    sx={{ opacity: 0, transition: '0.2s' }}
-                >
-                    <MoreVertIcon fontSize="small" />
-                </IconButton>
-                <Menu 
-                    anchorEl={optionsAnchor}
-                    open={Boolean(optionsAnchor)}
-                    onClose={handleOptionsClose}
-                    onClick={(e) => e.stopPropagation()} // Блокуємо кліки всередині меню
-                    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    PaperProps={{
-                        elevation: 3,
-                        sx: { minWidth: 150, borderRadius: 2, mt: 0.5 }
-                    }}
-                >
-                    <MenuItem onClick={handleEdit}>
-                        <ListItemIcon>
-                            <EditIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText>Редагувати</ListItemText>
-                    </MenuItem>
-                    <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-                        <ListItemIcon>
-                            <DeleteIcon fontSize="small" color="error" />
-                        </ListItemIcon>
-                        <ListItemText>Видалити</ListItemText>
-                    </MenuItem>
-                </Menu>
+                <ActionMenu
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                />
             </TableCell>
         </TableRow>
     );

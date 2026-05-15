@@ -56,6 +56,8 @@ Route::middleware('auth')->group(function () {
 
     // Додаємо маршрут для перегляду конкретного проєкту
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    Route::post('/projects/{project}/delete', [ProjectController::class, 'deleteProject']);
+    Route::post('/projects/{project}/edit', [ProjectController::class, 'editProject']);
     
     // создание задания
     Route::post('/add/task', [TaskController::class, 'createTask'])->name('task.store');

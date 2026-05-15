@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Grade;
 use App\Models\Project;
 use App\Models\User;
-use App\Notifications\GradeChangedNotification;
+
+use App\Notifications\SimpleNotification;
+use App\Enums\NotificationEvent;
 
 use App\Enums\TaskStatus;
 
@@ -105,6 +107,7 @@ class GradeController extends Controller
                     'message' => 'Вам виставлено оцінку за проєкт',
                     'project_id' => $project->id,
                     'author_id' => auth()->id(),
+                    'url' => url('/projects/' . $project->uuid)
                 ])
             );
         }

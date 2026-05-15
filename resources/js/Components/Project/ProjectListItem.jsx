@@ -1,20 +1,33 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
+import { router } from '@inertiajs/react';
 import ProjectProgressBar from '@/Components/Project/ProjectProgressBar';
+import ActionMenu from '@/Components/ActionMenu';
 
 import {
-    Box, Card, CardActionArea, Link, Typography, Chip, 
+    Box, Card, CardActionArea, Link, Typography, Chip,
 } from '@mui/material';
 
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 
-export default function ProjectListItem({ project }) {
+export default function ProjectListItem({ project, onEdit }) {
+    const handleDelete = () => {
+        if (window.confirm('Ви впевнені, що хочете видалити цей проєкт?')) {
+            router.post(`/projects/${project.uuid}/delete`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     return (
         <Card 
             key={project.id}
             sx={{ 
                 transition: 'box-shadow 0.2s',
-                '&:hover': { boxShadow: 4 }
+                '&:hover': { 
+                    boxShadow: 4,
+                    '& .action-menu-trigger': { opacity: 1 }
+                }
             }}
         >
             <CardActionArea 
@@ -66,6 +79,14 @@ export default function ProjectListItem({ project }) {
                         total={project.tasks_total}
                     />
                 </Box>
+                
+                {project.is_owner && (
+                    <ActionMenu 
+                        onEdit={onEdit} 
+                        onDelete={handleDelete} 
+                    />
+                )}
+
 
             </CardActionArea>
         </Card>

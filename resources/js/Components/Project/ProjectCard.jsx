@@ -1,17 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { router } from '@inertiajs/react';
 import ProjectProgressBar from '@/Components/Project/ProjectProgressBar';
-
+import ActionMenu from '@/Components/ActionMenu';
 
 import {
     Box, Card, CardActionArea, CardContent,
-    Link, Typography, Tooltip, Chip, 
+    Link, Typography, Tooltip, Chip,
 } from '@mui/material';
 
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 
-
-export default function ProjectCard({ project }) {
+export default function ProjectCard({ project, onEdit }) {
+    
+    const handleDelete = () => {
+        if (window.confirm('Ви впевнені, що хочете видалити цей проєкт?')) {
+            router.post(`/projects/${project.uuid}/delete`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+   
     return (
         <Card
             sx={{
@@ -23,6 +32,7 @@ export default function ProjectCard({ project }) {
                 '&:hover': {
                     transform: 'scale(1.03)',
                     boxShadow: 6,
+                    '& .action-menu-trigger': { opacity: 1 }
                 }
             }}
         >
@@ -42,6 +52,14 @@ export default function ProjectCard({ project }) {
                                 size="small" 
                                 variant="outlined"
                             />
+
+                            {project.is_owner && (
+                                <ActionMenu 
+                                    onEdit={onEdit} 
+                                    onDelete={handleDelete} 
+                                />
+                            )}
+
                         </Box>
 
                         {/* НАЗВАНИЕ И ОПИСАНИЕ */}

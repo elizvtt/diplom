@@ -6,7 +6,7 @@ import { EVENT_LABELS } from '@/utils/constants';
 import { 
     Box, Typography, Button, TextField, Paper, Menu, MenuItem,
     Divider, Switch, FormControlLabel, Avatar, Badge, IconButton,
-    FormGroup, Snackbar, Alert, Grid
+    FormGroup, Grid
 } from '@mui/material';
 
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -21,7 +21,7 @@ export default function Profile({ auth, notificationSettingsList }) {
 
     const user = auth.user;
     // console.log('[Profile.jsx] user: ', user);
-    // console.log('[Profile.jsx] notificationSettingsList: ', notificationSettingsList);
+    console.log('[Profile.jsx] notificationSettingsList: ', notificationSettingsList);
 
     const fileInputRef = useRef(null);
 
@@ -152,9 +152,7 @@ export default function Profile({ auth, notificationSettingsList }) {
         preserveScroll: true,
             onSuccess: () => {
                 setChangeSaved(false);
-                // setSnackbarOpen(true);
             }
-            
         });
     };
 
@@ -162,7 +160,6 @@ export default function Profile({ auth, notificationSettingsList }) {
         <AuthenticatedLayout header={null} >
             <Head title="Профіль" />
 
-            {/* <Box sx={{ maxWidth: 700, mx: 'auto', mt: 4, mb: 8 }}> */}
             <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, mb: 8, px: 2 }}>
 
                 {/* ВЕРХНЯ ПАНЕЛЬ З КНОПКОЮ НАЗАД */}
@@ -410,22 +407,6 @@ export default function Profile({ auth, notificationSettingsList }) {
 
                     </form>
                 </Paper>
-                {/* Спливаюче повідомлення про успіх */}
-                {/* <Snackbar 
-                    open={snackbarOpen} 
-                    autoHideDuration={4000} // Зникне самостійно через 4 секунди
-                    onClose={handleCloseSnackbar}
-                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }} // Позиція на екрані
-                >
-                    <Alert 
-                        onClose={handleCloseSnackbar} 
-                        severity="success" 
-                        // variant="filled" // Робить фон повністю зеленим
-                        sx={{ width: '100%', borderRadius: 2 }}
-                    >
-                        Дані успішно оновлено!
-                    </Alert>
-                </Snackbar> */}
             </Box>
         </AuthenticatedLayout>
     );

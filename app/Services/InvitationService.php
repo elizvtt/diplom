@@ -60,6 +60,7 @@ class InvitationService
                         'message' => 'Вас запросили у проєкт "' . $project->title . '"',
                         'project_id' => $project->id,
                         'author_id' => auth()->id(),
+                        'url' => url('/projects/' . $project->uuid),
                     ])
                 );
 
