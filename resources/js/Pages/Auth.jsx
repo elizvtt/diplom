@@ -14,7 +14,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import GoogleIcon from '@mui/icons-material/Google';
 
 
-export default function Auth({ canLogin, canRegister, availableRoles = [] }) {
+export default function Auth({ availableRoles = [] }) {
     const [showPassword, setShowPassword] = useState(false);
     const [isLogin, setIsLogin] = useState(true); // состояние для переключения вход/регистрация
     const [passwordTooltipOpen, setPasswordTooltipOpen] = useState(false);
@@ -300,7 +300,15 @@ export default function Auth({ canLogin, canRegister, availableRoles = [] }) {
                                 <Typography>або</Typography>
                             </Divider>
 
-                            <Button variant="outlined" color="secondary" size="large" fullWidth startIcon={<GoogleIcon />}> 
+                            <Button
+                                variant="outlined"
+                                color="secondary"
+                                size="large"
+                                component="a" 
+                                href="/auth/google/redirect"
+                                fullWidth
+                                startIcon={<GoogleIcon />}
+                            > 
                                 Увійти через Google
                             </Button>
                         </>

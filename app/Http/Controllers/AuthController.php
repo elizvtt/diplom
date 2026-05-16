@@ -10,6 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -30,8 +34,6 @@ class AuthController extends Controller
             'password.min' => 'Пароль має містити не менше 6 символів.',
         ]);
 
-        debug($validated);
-
         // Создание пользователя в БД
         $user = User::create([
             'full_name' => $validated['full_name'],
@@ -41,12 +43,11 @@ class AuthController extends Controller
             'is_active' => 1,
         ]);
 
-
         // Сразу авторизуем пользователя
         Auth::login($user);
 
-        // Inertia сделает плавный редирект на главную
-        return redirect('/');
+        // редирект на главную
+        return redirect('/')->with('success', 'Реєстрація успішна! Вітаємо на Edutive');
     }
 
     /**
@@ -54,7 +55,7 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // Простая валидация формата
+        // Простая валидация
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -62,18 +63,13 @@ class AuthController extends Controller
 
         // Auth::attempt сама найдет юзера по email и сверит хеш пароля
         if (Auth::attempt($credentials)) {
-            // Защита от атаки фиксации сессии
-            $request->session()->regenerate(); 
+            $request->session()->regenerate();  // Защита от атаки фиксации сессии
 
-            // Редирект на главную (или туда, куда юзер пытался зайти до логина)
-            return redirect()->intended('/');
+            return redirect()->intended('/')->with('success', 'З поверненням!'); // Редирект на главную
         }
 
-        // 3. Если пароль не подошел - выбрасываем ошибку валидации.
-        // Inertia поймает её и положит в errors.email в вашем React-коде!
-        throw ValidationException::withMessages([
-            'email' => 'Невірний логін або пароль.',
-        ]);
+        // Если пароль не подошел - выбрасываем ошибку валидации.
+        throw ValidationException::withMessages(['email' => 'Невірний логін або пароль',]);
     }
 
     /**
@@ -87,5 +83,43 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    /**
+     * Перенаправляє користувача на сторінку авторизації Google
+     */
+    public function googleRedirect()
+    {
+        return Socialite::driver('google')->redirect();
+    }
+
+    /**
+     * Обробляє відповідь від Google після авторизації
+     */
+    public function googleCallback()
+    {
+        try {
+            $googleUser = Socialite::driver('google')->user();
+
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                // Створюємо нового юзера, якщо його ще немає
+                $user = User::create([
+                    'full_name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'password' => bcrypt(Str::random(24)), // Випадковий пароль
+                    'role' => UserRole::Student->value, 
+                    'is_active' => 1,
+                ]);
+            }
+
+            Auth::login($user);
+
+            return redirect()->intended('/')->with('success', 'З поверненням!');
+
+        } catch (\Exception $e) {
+            return redirect('/')->with('error', 'Сталася помилка при авторизації через Google.');
+        }
     }
 }

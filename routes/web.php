@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\AuthController;
@@ -19,27 +20,7 @@ use Inertia\Inertia;
 use App\Enums\UserRole;
 
 // ОСНОВНА СТОРІНКА
-Route::get('/', function () {
-    if (Auth::check()) {
-        return app(ProjectController::class)->listAllUserProjects();
-    }
-
-    $availableRoles = collect(UserRole::cases())
-        ->filter(fn (UserRole $role) => $role !== UserRole::Admin)
-        ->map(fn (UserRole $role) => [
-            'value' => $role->value,
-            'label' => $role->label(),
-        ])
-        ->values()
-        ->toArray();
-
-    return Inertia::render('Auth', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'availableRoles' => $availableRoles,
-    ]);
-
-})->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // МАРШРУТ-ПЕРЕНАПРАВЛЕННЯ
 Route::get('/login', function () {
@@ -50,6 +31,10 @@ Route::get('/login', function () {
 Route::middleware('guest')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
+
+    // МАРШРУТИ ДЛЯ GOOGLE
+    Route::get('/auth/google/redirect', [AuthController::class, 'googleRedirect'])->name('google.redirect');
+    Route::get('/auth/google/callback', [AuthController::class, 'googleCallback'])->name('google.callback');
 });
 
 
@@ -79,7 +64,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/tasks/{task}/delete', [TaskController::class, 'deleteTask']);
 
     
-    // ПРИГЛАШЕНИЯ И КОМАНДА
+    // & ПРИГЛАШЕНИЯ И КОМАНДА
     Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');
     Route::post('/projects/{project}/team/{user}/delete', [TeamController::class, 'deleteMembers']);
     Route::post('/projects/{project}/team/{user}/update', [TeamController::class, 'updateRole']);
@@ -90,7 +75,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/projects/{project}/join', [InvitationController::class, 'join'])->name('projects.invitations.join');
 
-    // ОЦЕНКИ
+    // & ОЦЕНКИ
     Route::get('/projects/{project}/grades', [GradeController::class, 'showGrades'])->name('grades.show');
     Route::post('/projects/{project}/grades', [GradeController::class, 'saveGrades'])->name('grades.save');
    
