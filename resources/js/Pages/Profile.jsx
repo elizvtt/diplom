@@ -21,7 +21,7 @@ export default function Profile({ auth, notificationSettingsList }) {
 
     const user = auth.user;
     // console.log('[Profile.jsx] user: ', user);
-    console.log('[Profile.jsx] notificationSettingsList: ', notificationSettingsList);
+    // console.log('[Profile.jsx] notificationSettingsList: ', notificationSettingsList);
 
     const fileInputRef = useRef(null);
 

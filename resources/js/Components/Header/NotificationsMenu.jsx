@@ -19,7 +19,8 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 
-export default function NotificationsMenu({ user, notifications }) {
+export default function NotificationsMenu({ notifications }) {
+    console.log('notifications: ', notifications);
 
     const unreadCount = notifications.filter(n => !n.read).length;
     const [isOpen, setIsOpen] = useState(false); // Стейт для модального окна (открыто/закрыто)

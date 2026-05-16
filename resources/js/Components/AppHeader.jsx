@@ -31,9 +31,7 @@ export default function AppHeader() {
                 
                 <Box sx={{ display: 'flex', alignItems: 'center', textAlign: 'center', color: '#475c4b' }}>
                     <AdminMenu user={auth.user} />
-                    {/* УВЕДОМЛЕНИЯ  */}
-                    <NotificationsMenu user={auth.user} notifications={auth.notifications}/>
-                    {/* АВАТАРКА */}
+                    <NotificationsMenu notifications={auth.notifications}/>
                     <UserMenu user={auth.user} />
                 </Box>            
                 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Task;
+use App\Models\Project;
 
 use App\Notifications\SimpleNotification;
 use App\Enums\NotificationEvent;
@@ -15,7 +16,6 @@ class CommentController extends Controller
 {
     public function addComment(Request $request)
     {
-        debug($request);
         // Валідація
         $validated = $request->validate([
             'task_id' => 'required|exists:tasks,id',
