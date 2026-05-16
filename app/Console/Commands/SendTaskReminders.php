@@ -35,7 +35,7 @@ class SendTaskReminders extends Command
     {
         $now = now()->startOfMinute();
 
-        // 1. Беремо типи нагадувань без 'none'
+        // Беремо типи нагадувань
         $reminderTypes = [
             TaskReminder::OneHour->value => 60, // година
             TaskReminder::OneDay->value => 1440, // 24 години
@@ -70,6 +70,8 @@ class SendTaskReminders extends Command
                     if (!$user) continue;
 
                     try {
+                        $project = Project::find($task->project_id);
+
                         $user->notify(
                             new SimpleNotification([
                                 'event' => 'task_reminder',
@@ -78,7 +80,7 @@ class SendTaskReminders extends Command
                                 'project_id' => $task->project_id,
                                 'task_id' => $task->id,
                                 'author_id' => $task->creator_id,
-                                'url' => url('/projects/' . $task->project->uuid . '/tasks/' . $task->id),
+                                'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
                             ])
                         );
 

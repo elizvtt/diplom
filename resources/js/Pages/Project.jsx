@@ -113,7 +113,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
         setTasks(prev => prev.map(t => t.id == taskId ? { ...t, status: newStatus } : t));
 
         // Запит до БД
-        router.post('/tasks/update-status', {
+        router.post('/tasks/status/update', {
             id: taskId,
             status: newStatus
         }, {

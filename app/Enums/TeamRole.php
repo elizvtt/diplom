@@ -6,7 +6,6 @@ enum TeamRole: string
 {
     case Owner = 'owner';
     case Editor = 'editor';
-    case Spectator = 'spectator';
 
     /**
      * Перевод
@@ -16,7 +15,6 @@ enum TeamRole: string
         return match($this) {
             self::Owner => 'Власник',
             self::Editor => 'Учасник',
-            self::Spectator => 'Читач',
         };
     }
 }

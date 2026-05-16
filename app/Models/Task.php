@@ -107,4 +107,9 @@ class Task extends Model
     {
         return $this->belongsTo(Task::class, 'parent_task_id');
     }
+
+    public function riskAssessments()
+    {
+        return $this->hasMany(RiskAssessment::class);
+    }
 }

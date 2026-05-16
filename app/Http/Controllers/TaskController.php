@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\TaskAssignee;
 use App\Models\Attachment;
 use App\Models\Project;
+use App\Models\RiskAssessment;
 
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
@@ -185,7 +186,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Оновлення статусу(бєклог, туду, инпрогрес и тд.)
+     * Оновлення статусу завдання (todo, inprogress, done)
      */
     public function updateStatus(Request $request)
     {
@@ -223,6 +224,11 @@ class TaskController extends Controller
             ]);
 
             if ($validated['status'] === TaskStatus::Done->value) {
+                RiskAssessment::updateOrCreate(
+                    ['task_id' => $task->id],
+                    ['actual_completion_date' => now()]
+                );
+
                 $project = Project::find($task->project_id);
                 $users = $project->members;
     
@@ -241,8 +247,14 @@ class TaskController extends Controller
                         ])
                     );
                 }
+            } else {
+                // Якщо завдання повернули з Done назад у роботу, очищаємо фактичну дату завершення
+                RiskAssessment::where('task_id', $task->id)->update([
+                    'actual_completion_date' => null
+                ]);
             }
             return back()->with('success', 'Статус успішно оновлено');
+
         } catch (\Exception $e) {
             Log::error("Помилка оновлення статусу завдання", [
                 'task_id' => $validated['id'] ?? 'unknown',

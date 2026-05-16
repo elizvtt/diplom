@@ -84,17 +84,18 @@ export default function NotificationItem({ notifications, isFiltered, closeModal
                 items.map((notification) => {
                     console.log('notification: ', notification.data.event);
                     const isInvite = notification.data.event === 'project_invite';
+                    const isClickable = notification.data.url && !(isInvite && notification.read);
                  
                     return (
                         <Box 
                             key={notification.id}
-                            onClick={(e) => notification.data.url ? handleNavigate(e, notification) : null}
+                            onClick={(e) => isClickable ? handleNavigate(e, notification) : null}
                             sx={{ 
                                 p: 2, 
                                 borderRadius: 2,
                                 bgcolor: notification.read ? '#f4f4f4' : '#ffff',
                                 border: notification.read ? '1px solid #e0e0e0' : '1px solid #8a2db1', // Рамка
-                                cursor: notification.data.url ? 'pointer' : 'default',
+                                cursor: isClickable ? 'pointer' : 'default',
                                 transition: 'all 0.3s ease',
                                 position: 'relative',
                                 overflow: 'hidden',

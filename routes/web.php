@@ -41,28 +41,24 @@ Route::middleware('guest')->group(function () {
 // ЗАХИЩЕНІ МАРШРУТИ (Тільки для авторизованих)
 Route::middleware('auth')->group(function () {
 
-    // Вихід
+    // & Вихід
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     
-    // профіль
+    // & профіль
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
-    // проєкти
+    // & ПРОЄКТ
     Route::post('/add/project', [ProjectController::class, 'createProject'])->name('projects.store');
-
-    // Додаємо маршрут для перегляду конкретного проєкту
     Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::post('/projects/{project}/delete', [ProjectController::class, 'deleteProject']);
     Route::post('/projects/{project}/edit', [ProjectController::class, 'editProject']);
     
-    // создание задания
+    // & ЗАВДАННЯ
     Route::post('/add/task', [TaskController::class, 'createTask'])->name('task.store');
-    // обновоения статуса
-    Route::post('/tasks/update-status', [TaskController::class, 'updateStatus']);
+    Route::post('/tasks/status/update', [TaskController::class, 'updateStatus']);
     Route::post('/tasks/{task}/update', [TaskController::class, 'updateTask']);
     Route::post('/tasks/{task}/delete', [TaskController::class, 'deleteTask']);
-
     
     // & ПРИГЛАШЕНИЯ И КОМАНДА
     Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');
@@ -71,7 +67,6 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/projects/{project}/invitations', [InvitationController::class, 'invite'])->name('projects.invitations.store');
     Route::post('/projects/{project}/invitations/search', [InvitationController::class, 'searchUser'])->name('projects.invitations.search');
-    
     Route::post('/invitations/{invitation}/revoke', [InvitationController::class, 'revoke']);
     Route::post('/invitation/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept');
     Route::post('/invitation/{token}/decline', [InvitationController::class, 'decline'])->name('invitation.decline');
@@ -89,7 +84,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/add/file', [AttachmentController::class, 'store']);
     Route::post('/delete/files/{attachment}', [AttachmentController::class, 'delete']);
 
+    // & УВЕДОМЛЕНИЯ
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read/all', [NotificationController::class, 'markAllAsRead']);
 
 });
 

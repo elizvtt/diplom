@@ -45,11 +45,9 @@ export default function NotificationsMenu({ notifications }) {
     const handleCloseCalendar = () => setCalendarAnchorEl(null);
     const handleClearDate = () => setSelectedDate(null);
 
-    // Функція "Відмітити всі як прочитані"
     const handleMarkAllAsRead = () => {
-        router.post('/notifications/read-all', {}, {
+        router.post('/notifications/read/all', {}, {
             preserveScroll: true,
-            // onSuccess: () => {}
         });
     };
 

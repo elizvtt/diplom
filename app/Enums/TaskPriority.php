@@ -15,7 +15,7 @@ enum TaskPriority: string
             self::Low => 'Низький',
             self::Medium => 'Середній',
             self::High => 'Високий',
-            self::Critical => 'Критичний',      
+            self::Critical => 'Критичний',
         };
     }
 }

@@ -31,6 +31,7 @@ class CommentController extends Controller
 
         $task = Task::find($validated['task_id']);
         $project = Project::find($task->project_id);
+        
         foreach ($task->assignees as $user) {
             if ($user->id === auth()->id()) continue;
             $user->notify(
