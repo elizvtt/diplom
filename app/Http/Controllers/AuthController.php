@@ -85,7 +85,8 @@ class AuthController extends Controller
         ]);
 
         // Створюємо унікальний ключ
-        $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
+        // $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
+        $throttleKey = str()->transliterate(str()->lower($credentials['email']).'|'.$request->ip());
 
         // ПЕРЕВІРКА - Чи не перевищено ліміт в 5 спроб
         if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts = 5)) {
@@ -156,7 +157,7 @@ class AuthController extends Controller
     /**
      * Обробляє відповідь від Google після авторизації
      */
-    public function googleCallback()
+    public function googleCallback(Request $request)
     {
         $throttleKey = 'google-callback|' . $request->ip();
 
@@ -189,8 +190,6 @@ class AuthController extends Controller
             Log::info("Вхід через Google", [
                 'user_id' => $user->id,
                 'email' => $user->email,
-                'is_new_user' => $isNewUser,
-                'google_id' => $googleUser->getId()
             ]);
 
             return redirect()->intended('/')->with('success', 'З поверненням!');
