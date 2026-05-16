@@ -7,15 +7,20 @@ use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
     /**
      * Відображення головної сторінки адмін-панелі
      */
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('admin-access'); // Додаткова перевірка через Gate
 
@@ -23,6 +28,8 @@ class AdminController extends Controller
         if (!session()->has('admin_access_verified_at')) {
             return redirect()->route('dashboard')->with('error', 'Будь ласка, підтвердіть пароль.');
         }
+
+        $selectedDate = $request->input('log_date', now()->format('Y-m-d'));
 
         // Збираємо статистику
         $stats = [
@@ -62,24 +69,41 @@ class AdminController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $logs = $this->getLogs();
+        $today = now()->format('Y-m-d');
 
         return Inertia::render('AdminPanel', [
             'stats' => $stats,
             'users' => $users,
             'projects' => $projects,
-            'logs' => $logs,
+            'logs' => $this->getLogs($today),
+            'selectedDate' => $today,
         ]);
     }
 
-
-    public function getLogs()
+    /**
+     * Окремий POST запит для зміни дати логів
+     */
+    public function fetchLogs(Request $request)
     {
-        // Формуємо ім'я файлу на основі поточної дати
-        $date = now()->format('Y-m-d');
-        $logPath = storage_path("logs/laravel-{$date}.log");
+        Gate::authorize('admin-access');
 
-        if (!file_exists($logPath)) return [];
+        // Беремо прийшовши з POST запиту дату
+        $selectedDate = $request->input('log_date', now()->format('Y-m-d'));
+
+        return Inertia::render('AdminPanel', [
+            'logs' => $this->getLogs($selectedDate),
+            'selectedDate' => $selectedDate,
+        ]);
+    }
+
+    /**
+     * Парсинг логів за конкретну дату
+     */
+    public function getLogs($date)
+    {
+        $logPath = storage_path("logs/laravel-{$date}.log"); // Формуємо ім'я файлу на основі дати
+
+        if (!file_exists($logPath)) return []; // Якщо файлу не існує, повертаємо порожній масив
 
         $fileContent = file_get_contents($logPath);
         
@@ -92,9 +116,8 @@ class AdminController extends Controller
             $context = json_decode($match['context'], true);
             $extra = json_decode($match['extra'], true);
 
-            debug($extra);
-
             return [
+                'level' => strtoupper($match['level']),
                 'action' => $match['message'],
                 'description' => "user: " . ($extra['user']['email'] ?? 'undefined') . " (" . ($extra['user']['role'] ?? 'n/a') . ")",
                 'ip' => $extra['web']['ip'] ?? '127.0.0.1',
@@ -111,19 +134,62 @@ class AdminController extends Controller
      */
     public function verifyPassword(Request $request)
     {
+        // Створюємо унікальний ключ для лімітера на основі дії та IP-адреси
+        $throttleKey = 'verify-admin-password:' . $request->ip();
+
+        // перевірка на 3 спроби
+        if (RateLimiter::tooManyAttempts($throttleKey, $perMinute = 3)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            Log::error("БЛОКУВАННЯ: Перевищено ліміт спроб входу до панелі адміністратора", [
+                'ip' => $request->ip(),
+                'user_id' => auth()->id(),
+                'email' => auth()->user()?->email,
+                'block_duration_seconds' => $seconds
+            ]);
+
+            throw ValidationException::withMessages([
+                'password' => "Забагато невдалих спроб. Доступ заблоковано на {$seconds} секунд.",
+            ]);
+        
+        }
+
+        // ВАЛІДАЦІЯ ПАРОЛЯ
         // current_password автоматично перевіряє, чи збігається введений пароль із паролем поточного юзера в БД
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'password' => ['required', 'current_password'],
         ], [
-            'password.current_password' => 'Невірний пароль адміністратора.',
-            'password.required' => 'Введіть пароль для підтвердження.',
+            'password.current_password' => 'Невірний пароль адміністратора',
+            'password.required' => 'Введіть пароль для підтвердження',
         ]);
+    
+        if ($validator->fails()) {
+            // Фіксуємо невдалу спробу і збільшуємо лічильник на 1
+            RateLimiter::hit($throttleKey, $decaySeconds = 300); 
+    
+            // КІЛЬКІСТЬ ЗАЛИШКОВИХ СПРОБ
+            $attemptsLeft = RateLimiter::retriesLeft($throttleKey, 3);
+    
+            Log::warning("Невдала спроба підтвердження пароля адміністратора", [
+                'ip' => $request->ip(),
+                'user_id' => auth()->id(),
+                'email' => auth()->user()?->email,
+                'attempts_left' => $attemptsLeft
+            ]);
+    
+            // Прокидаємо помилку валідації далі на фронтенд
+            throw ValidationException::withMessages(['password' => "Невірний пароль адміністратора. Залишилось спроб: {$attemptsLeft}"]);
+        }
+    
+        // Успішний вхід
+        RateLimiter::clear($throttleKey);
 
-        // Якщо валідація пройшла успішно, записуємо мітку в сесію
+        // записуємо мітку в сесію
         session(['admin_access_verified_at' => now()]);
 
         // переходимо на сторінку адмінки
         return redirect()->route('admin.index')->with('success', 'Доступ підтверджено');
+
     }
 
 

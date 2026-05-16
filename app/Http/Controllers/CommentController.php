@@ -37,7 +37,7 @@ class CommentController extends Controller
                 new SimpleNotification([
                     'event' => NotificationEvent::NewComment->value,
                     'title' => 'Новий коментар',
-                    'message' => 'Новий коментар до задачі "' . $task->title . '"',
+                    'message' => 'Новий коментар до задачі «' . $task->title . '»',
                     'project_id' => $task->project_id,
                     'task_id' => $task->id,
                     'author_id' => auth()->id(),
@@ -53,7 +53,7 @@ class CommentController extends Controller
     public function deleteComment(Comment $comment)
     {
         // Перевірка, чи це автор коментаря видаляє його
-        if ($comment->user_id !== Auth::id()) abort(403);
+        if ($comment->user_id !== Auth::id()) return redirect()->back()->with('error', 'Ви не маєте прав на видалення цього коментаря');
 
         $comment->update(['is_active' => 0]);
         

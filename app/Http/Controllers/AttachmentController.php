@@ -41,9 +41,8 @@ class AttachmentController extends Controller
     public function delete(Attachment $attachment)
     {
         $attachment->update(['is_active' => 0]);
-        if ($attachment->file_path) {
-            Storage::disk('public')->delete($attachment->file_path);
-        }
+        
+        if ($attachment->file_path) Storage::disk('public')->delete($attachment->file_path);
 
         return back()->with('success', 'Файл видалено');
     }

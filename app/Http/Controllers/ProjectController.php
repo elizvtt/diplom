@@ -56,10 +56,7 @@ class ProjectController extends Controller
 
                 if (RateLimiter::tooManyAttempts($dailyKey, 5)) {
 
-                    return redirect()->back()->with(
-                        'error',
-                        'Ви перевищили денний ліміт AI-генерацій'
-                    );
+                    return redirect()->back()->with('error','Ви перевищили денний ліміт AI-генерацій');
                 }
 
                 RateLimiter::hit($dailyKey, 86400);
@@ -72,10 +69,7 @@ class ProjectController extends Controller
 
                     $seconds = RateLimiter::availableIn($minuteKey);
 
-                    return redirect()->back()->with(
-                        'error',
-                        "Спробуйте через {$seconds} сек."
-                    );
+                    return redirect()->back()->with('error',"Спробуйте через {$seconds} сек");
                 }
 
                 RateLimiter::hit($minuteKey, 60);
@@ -89,7 +83,6 @@ class ProjectController extends Controller
                     $project,
                     $generatedTasks
                 );
-
             }
 
             return redirect()->back()->with('success', 'Проєкт успішно створено!');
@@ -148,7 +141,7 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         if ($project->owner_id !== auth()->id() && !$project->members->contains(auth()->id())) {
-            abort(403, 'У вас немає доступу до цього проєкту');
+            return redirect()->back()->with('error', 'У вас немає доступу до цього проєкту');
         }
 
         // завантажуємо лічильники
@@ -213,7 +206,7 @@ class ProjectController extends Controller
     {
         // Перевірка прав
         if ($project->owner_id !== auth()->id()) {
-            return redirect()->back()->with('error', 'У вас немає прав для видалення цього проєкту.');
+            return redirect()->back()->with('error', 'У вас немає прав для видалення цього проєкту');
         }
 
         try {
@@ -221,7 +214,7 @@ class ProjectController extends Controller
                 'is_active' => 0,
             ]);
 
-            Log::info("Проєкт видалено", [
+            Log::info("Проєкт успішно видалено", [
                 'project_id' => $project->id,
                 'user_id' => auth()->id(),
             ]);

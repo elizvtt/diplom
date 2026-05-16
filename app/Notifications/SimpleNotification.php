@@ -57,6 +57,7 @@ class SimpleNotification extends Notification
             'project_id' => $this->data['project_id'] ?? null,
             'author_id' => $this->data['author_id'] ?? null,
             'url' => $this->data['url'] ?? null,
+            'token' => $this->data['token'] ?? null,
         ];
     }
 

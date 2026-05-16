@@ -31,12 +31,8 @@ function TabPanel({ children, value, index }) {
     );
 }
 
-export default function AdminPanel({
-    stats,
-    users = [],
-    projects = [],
-    logs = [],
-}) {
+export default function AdminPanel({ stats, users = [], projects = [], logs = [], selectedDate }) {
+    console.log('logs: ', logs);
 
     const [tab, setTab] = useState('analytics');
 
@@ -107,7 +103,7 @@ export default function AdminPanel({
 
                 {/* LOGS */}
                 <TabPanel value={tab} index="logs">
-                    <AdminLogs logs={logs} />
+                    <AdminLogs logs={logs} selectedDate={selectedDate} />
                 </TabPanel>
 
                 {/* SETTINGS */}

@@ -119,13 +119,13 @@ class GradeController extends Controller
         return back();
     }
 
-    private function canGrade(Project $project): void
+    private function canGrade(Project $project)
     {
         if (
             $project->owner_id !== auth()->id()
             && auth()->user()->role !== 'teacher'
         ) {
-            abort(403);
+            return redirect()->back()->with('error', 'У вас немає прав на виставлення оцінок');
         }
     }
 }

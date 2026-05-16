@@ -163,7 +163,7 @@ export default function ProjectView({ project, teamMembers, statuses, priorities
                             title='Повернутися'
                             component={Link}
                             href={backUrl}
-                            sx={{ mr: 2, bgcolor: 'background.paper', boxShadow: 1 }}
+                            sx={{ mr: 2, bgcolor: 'background.paper', boxShadow: 1, width: '40px', height: '40px' }}
                         >
                             <ArrowBackIcon />
                         </IconButton>

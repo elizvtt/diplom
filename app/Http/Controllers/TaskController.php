@@ -14,8 +14,9 @@ use App\Enums\TaskReminder;
 use App\Enums\TaskAssigneeStatus;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 use App\Notifications\SimpleNotification;
 use App\Enums\NotificationEvent;
@@ -60,57 +61,34 @@ class TaskController extends Controller
             'files.*.max' => 'Максимальний розмір файлу — 10 MB.',
         ]);
 
-        // Створення самого завдання
-        $task = Task::create([
-            'project_id' => $validated['project_id'],
-            'creator_id' => Auth::id(),
-            'title' => $validated['title'],
-            'description' => $validated['description'] ? ['text' => $validated['description']] : null,
-            'parent_task_id' => $validated['parent_task_id'] ?? null,
-            'date_start' => $validated['date_start'],
-            'date_end' => $validated['date_end'],
-            'status' => $validated['status'],
-            'priority' => $validated['priority'],
-            'reminder' => $validated['reminder'],
-            'progress' => $validated['progress'],
-            'is_active' => 1,
-        ]);
-
-        $project = Project::find($task->project_id);
-        $users = $project->members;
-
-        foreach ($users as $user) {
-            // чтобы автор не получал уведомление самому себе
-            if ($user->id === auth()->id()) continue;
-            $user->notify(
-                new SimpleNotification([
-                    'event' => NotificationEvent::TaskCreated->value,
-                    'title' => 'Нове завдання у проєкті',
-                    'message' => 'Створено задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
-                    'project_id' => $task->project_id,
-                    'task_id' => $task->id,
-                    'author_id' => auth()->id(),
-                    'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
-                ])
-            );
-        }
-
-        // додавання виконавців
-        if (!empty($validated['assignees'])) {
-            foreach ($validated['assignees'] as $userId) {
-                TaskAssignee::create([
-                    'task_id' => $task->id,
-                    'user_id' => $userId,
-                    'status'  => TaskAssigneeStatus::Assigned,
-                    'progress' => 0
-                ]);
-
-                $user = User::find($userId);
+        try {
+            // Створення самого завдання
+            $task = Task::create([
+                'project_id' => $validated['project_id'],
+                'creator_id' => Auth::id(),
+                'title' => $validated['title'],
+                'description' => $validated['description'] ? ['text' => $validated['description']] : null,
+                'parent_task_id' => $validated['parent_task_id'] ?? null,
+                'date_start' => $validated['date_start'],
+                'date_end' => $validated['date_end'],
+                'status' => $validated['status'],
+                'priority' => $validated['priority'],
+                'reminder' => $validated['reminder'],
+                'progress' => $validated['progress'],
+                'is_active' => 1,
+            ]);
+    
+            $project = Project::find($task->project_id);
+            $users = $project->members;
+    
+            foreach ($users as $user) {
+                // чтобы автор не получал уведомление самому себе
+                if ($user->id === auth()->id()) continue;
                 $user->notify(
                     new SimpleNotification([
-                        'event' => NotificationEvent::TaskAssigned->value,
-                        'title' => 'Нове завдання',
-                        'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
+                        'event' => NotificationEvent::TaskCreated->value,
+                        'title' => 'Нове завдання у проєкті',
+                        'message' => 'Створено задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
                         'project_id' => $task->project_id,
                         'task_id' => $task->id,
                         'author_id' => auth()->id(),
@@ -118,28 +96,72 @@ class TaskController extends Controller
                     ])
                 );
             }
-        }
-
-        if ($request->hasFile('files')) {
-            foreach ($request->file('files') as $file) {
-
-                $path = $file->store('attachments', 'public');
-
-                Attachment::create([
-                    'task_id' => $task->id,
-                    'user_id' => Auth::id(),
-                    'filename' => $file->getClientOriginalName(),
-                    'file_path' => $path,
-                    'file_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                ]);
+    
+            // додавання виконавців
+            if (!empty($validated['assignees'])) {
+                foreach ($validated['assignees'] as $userId) {
+                    TaskAssignee::create([
+                        'task_id' => $task->id,
+                        'user_id' => $userId,
+                        'status'  => TaskAssigneeStatus::Assigned,
+                        'progress' => 0
+                    ]);
+    
+                    $user = User::find($userId);
+                    $user->notify(
+                        new SimpleNotification([
+                            'event' => NotificationEvent::TaskAssigned->value,
+                            'title' => 'Нове завдання',
+                            'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
+                            'project_id' => $task->project_id,
+                            'task_id' => $task->id,
+                            'author_id' => auth()->id(),
+                            'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
+                        ])
+                    );
+                }
             }
+    
+            if ($request->hasFile('files')) {
+                foreach ($request->file('files') as $file) {
+    
+                    $path = $file->store('attachments', 'public');
+    
+                    Attachment::create([
+                        'task_id' => $task->id,
+                        'user_id' => Auth::id(),
+                        'filename' => $file->getClientOriginalName(),
+                        'file_path' => $path,
+                        'file_type' => $file->getClientMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            }
+    
+            Log::info("Створено нове завдання", [
+                'project_id' => $task->project_id,
+                'project_title' => $project->title,
+                'task_id' => $task->id,
+                'task_title' => $task->title,
+                'status' => $task->status,
+                'priority' => $task->priority,
+                'assignees' => $assigneesLog,
+                'attached_files_count' => $filesCount
+            ]);
+
+            // Повернення відповіді
+            return redirect()->back()->with('success', 'Завдання успішно створено!');
+
+        } catch (\Exception $e) {
+            Log::error("Помилка під час створення завдання", [
+                'project_id' => $validated['project_id'] ?? 'unknown',
+                'task_title' => $validated['title'] ?? 'unknown',
+                'error_message' => $e->getMessage()
+            ]);
+
+            return redirect()->back()->with('error', 'Не вдалося створити завдання через внутрішню помилку.');
         }
-
-        // Повернення відповіді з повідомленням для Snackbar
-        return redirect()->back()->with('success', 'Завдання успішно створено!');
     }
-
     
     /**
      * * проверка пользователя
@@ -172,33 +194,62 @@ class TaskController extends Controller
             'status' => ['required', Rule::enum(TaskStatus::class)],
         ]);
 
-        // Знаходимо модель по ID з запиту
-        $task = Task::findOrFail($validated['id']);
+        try {
+            $task = Task::findOrFail($validated['id']);
+            $project = Project::findOrFail($task->project_id);
+
+            // перевірка прав доступу
+            $currentUserId = auth()->id();
         
-        $task->update(['status' => $validated['status']]);
+            $isProjectOwner = ($project->owner_id === $currentUserId); // Чи є користувач власником проєкту
+            // Чи призначений користувач на це завдання
+            $isAssignee = TaskAssignee::where('task_id', $task->id)
+                ->where('user_id', $currentUserId)
+                ->exists();
 
-        if ($validated['status'] === TaskStatus::Done->value) {
-            $project = Project::find($task->project_id);
-            $users = $project->members;
+            if (!$isProjectOwner && !$isAssignee) return redirect()->back()->with('error', 'Оновлювати статус завдання може тільки виконавець або власник проєкту');
+        
+            $oldStatus = $task->status; // Зберігаємо старий статус для порівняння в логах
 
-            foreach ($users as $user) {
-                if ($user->id === auth()->id()) continue;
+            $task->update(['status' => $validated['status']]); // Оновлюємо статус
 
-                $user->notify(
-                    new SimpleNotification([
-                        'event' => NotificationEvent::TaskCompleted->value,
-                        'title' => 'Завдання завершено',
-                        'message' => 'Задачу «' . $task->title . '» завершено',
-                        'project_id' => $task->project_id,
-                        'task_id' => $task->id,
-                        'author_id' => auth()->id(),
-                        'url' => url('/projects/' . $project->uuid),
-                    ])
-                );
+            Log::info("Змінено статус завдання", [
+                'task_id' => $task->id,
+                'task_title' => $task->title,
+                'old_status' => $oldStatus,
+                'new_status' => $task->status,
+                'project_id' => $project->id,
+                'changed_by_owner' => $isProjectOwner
+            ]);
+
+            if ($validated['status'] === TaskStatus::Done->value) {
+                $project = Project::find($task->project_id);
+                $users = $project->members;
+    
+                foreach ($users as $user) {
+                    if ($user->id === auth()->id()) continue;
+    
+                    $user->notify(
+                        new SimpleNotification([
+                            'event' => NotificationEvent::TaskCompleted->value,
+                            'title' => 'Завдання завершено',
+                            'message' => 'Задачу «' . $task->title . '» завершено',
+                            'project_id' => $task->project_id,
+                            'task_id' => $task->id,
+                            'author_id' => auth()->id(),
+                            'url' => url('/projects/' . $project->uuid),
+                        ])
+                    );
+                }
             }
+            return back()->with('success', 'Статус успішно оновлено');
+        } catch (\Exception $e) {
+            Log::error("Помилка оновлення статусу завдання", [
+                'task_id' => $validated['id'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Помилка при оновленні статусу завдання');
         }
-        // return back()->with('success', 'Статус оновлено');
-        return back();
     }
 
     /**
@@ -228,66 +279,83 @@ class TaskController extends Controller
             'assignees.*.exists' => 'Обраний виконавець не знайдений у системі',
         ]);
 
-        // Оновлення основних полів завдання
-        $task->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'] ? ['text' => $validated['description']] : null,
-            'date_start' => $validated['date_start'],
-            'date_end' => $validated['date_end'],
-            // Використовуємо $request->has(), щоб оновлювати ці поля, тільки якщо вони передані
-            'priority' => $request->has('priority') ? $validated['priority'] : $task->priority,
-            'progress' => $request->has('progress') ? $validated['progress'] : $task->progress,
-        ]);
+        try {
+            // Оновлення основних полів завдання
+            $task->update([
+                'title' => $validated['title'],
+                'description' => $validated['description'] ? ['text' => $validated['description']] : null,
+                'date_start' => $validated['date_start'],
+                'date_end' => $validated['date_end'],
+                // Використовуємо $request->has(), щоб оновлювати ці поля, тільки якщо вони передані
+                'priority' => $request->has('priority') ? $validated['priority'] : $task->priority,
+                'progress' => $request->has('progress') ? $validated['progress'] : $task->progress,
+            ]);
+    
+            if ($request->has('assignees')) {
+                // Отримуємо ID поточних виконавців з БД
+                $currentAssigneeIds = TaskAssignee::where('task_id', $task->id)->pluck('user_id')->toArray();
+                $newAssigneeIds = $validated['assignees'] ?? [];
+    
+                // Визначаємо, кого треба додати, а кого видалити
+                $toAdd = array_diff($newAssigneeIds, $currentAssigneeIds);
+                $toRemove = array_diff($currentAssigneeIds, $newAssigneeIds);
+    
+                // Видаляємо тих, кого зняли з завдання
+                if (!empty($toRemove)) {
+                    $removedEmails = User::whereIn('id', $toRemove)->pluck('email')->toArray();
 
-        if ($request->has('assignees')) {
-            // Отримуємо ID поточних виконавців з БД
-            $currentAssigneeIds = TaskAssignee::where('task_id', $task->id)->pluck('user_id')->toArray();
-            $newAssigneeIds = $validated['assignees'] ?? [];
-
-            // Визначаємо, кого треба додати, а кого видалити
-            $toAdd = array_diff($newAssigneeIds, $currentAssigneeIds);
-            $toRemove = array_diff($currentAssigneeIds, $newAssigneeIds);
-
-            // Видаляємо тих, кого зняли з завдання
-            if (!empty($toRemove)) {
-                TaskAssignee::where('task_id', $task->id)
-                    ->whereIn('user_id', $toRemove)
-                    ->delete();
-            }
-
-            // Додаємо лише нових
-            foreach ($toAdd as $userId) {
-                TaskAssignee::create([
-                    'task_id' => $task->id,
-                    'user_id' => $userId,
-                    'status'  => TaskAssigneeStatus::Assigned,
-                    'progress' => 0
-                ]);
-                
-                $user = User::find($userId);
-                $project = Project::find($task->project_id);
-                
-                if ($user) {
-                    if ($user->id === auth()->id()) continue;
-
-                    $user->notify(
-                    new SimpleNotification([
-                        'event' => NotificationEvent::TaskAssigned->value,
-                        'title' => 'Нове завдання',
-                        'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
-                        'project_id' => $task->project_id,
-                        'task_id' => $task->id,
-                        'author_id' => auth()->id(),
-                        'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
-                    ]));
+                    TaskAssignee::where('task_id', $task->id)
+                        ->whereIn('user_id', $toRemove)
+                        ->delete();
                 }
+    
+                // Додаємо лише нових
+                foreach ($toAdd as $userId) {
+                    TaskAssignee::create([
+                        'task_id' => $task->id,
+                        'user_id' => $userId,
+                        'status'  => TaskAssigneeStatus::Assigned,
+                        'progress' => 0
+                    ]);
+                    
+                    $user = User::find($userId);
+                    $project = Project::find($task->project_id);
+                    
+                    if ($user) {
+                        $addedEmails[] = $user->email; // Для логу
+
+                        if ($user->id === auth()->id()) continue;
+    
+                        $user->notify(
+                        new SimpleNotification([
+                            'event' => NotificationEvent::TaskAssigned->value,
+                            'title' => 'Нове завдання',
+                            'message' => 'Вас призначено на задачу «' . $task->title . '» у проєкті «' . $project->title . '»',
+                            'project_id' => $task->project_id,
+                            'task_id' => $task->id,
+                            'author_id' => auth()->id(),
+                            'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
+                        ]));
+                    }
+                }            
             }
-            
+            Log::info("Оновлено параметри завдання", [
+                'task_id' => $task->id,
+                'task_title' => $task->title,
+                'project_id' => $task->project_id,
+                'added_assignees' => $addedEmails,
+                'removed_assignees' => $removedEmails,
+                'current_progress' => $task->progress
+            ]);
+    
+            return redirect()->back()->with('success', 'Завдання успішно оновлено!');
+        } catch (\Exception $e) {
+            Log::error("Помилка під час редагування завдання", [
+                'task_id' => $task->id,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->with('error', 'Помилка під час збереження');
         }
-
-
-        // Повернення відповіді
-        return redirect()->back()->with('success', 'Завдання успішно оновлено!');
     }
 
     /**
@@ -297,11 +365,26 @@ class TaskController extends Controller
     {
         // Перевіряємо, чи поточний користувач є автором завдання
         if ($task->creator_id !== auth()->id()) {
-            abort(403, 'У вас немає прав для видалення чужого завдання');
+            redirect()->back()->with('error', 'У вас немає прав для видалення чужого завдання');
         }
 
-        $task->update(['is_active' => 0]);
-
-        return redirect()->back()->with('success', 'Завдання успішно видалено.');
+        try {
+            $task->update(['is_active' => 0]);
+    
+            Log::info("Завдання успішно видалено", [
+                'task_id' => $task->id,
+                'task_title' => $task->title,
+                'project_id' => $task->project_id,
+                'deleted_by' => auth()->id()
+            ]);
+    
+            return redirect()->back()->with('success', 'Завдання успішно видалено.');
+        } catch (\Exception $e) {
+            Log::error("Помилка видалення завдання", [
+                'task_id' => $task->id,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->with('error', 'Не вдалося видалити завдання.');
+        }
     }
 }

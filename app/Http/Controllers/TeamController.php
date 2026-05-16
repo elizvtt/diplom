@@ -61,7 +61,7 @@ class TeamController extends Controller
     {
         // Перевірка прав (тільки автор запрошення або власник проєкту може скасувати)
         if ($invitation->project->owner_id !== auth()->id() && $invitation->invited_by_id !== auth()->id()) {
-            abort(403, 'У вас немає прав для скасування запрошення');
+            return redirect()->back()->with('error', 'У вас немає прав для скасування запрошення');
         }
         $invitation->update(['status' => InvitationStatus::Revoked->value]);
 
@@ -85,22 +85,32 @@ class TeamController extends Controller
                 ->with('info', 'Ви вже є учасником цього проєкту.');
         }
 
-        // Створюємо запис у таблиці Team (project_members)
-        Team::create([
-            'project_id' => $project->id,
-            'user_id' => Auth::id(),
-            'role' => TeamRole::MEMBER,
-            'is_active' => true,
-        ]);
+        try {
+            // Створюємо запис у таблиці project_members
+            Team::create([
+                'project_id' => $project->id,
+                'user_id' => Auth::id(),
+                'role' => TeamRole::Spectator,
+                'is_active' => true,
+            ]);
+    
+            Log::info("Користувач приєднався до проєкту через посилання", [
+                'project_id' => $project->id,
+                'user_id' => Auth::id()
+            ]);
+    
+            return redirect()->route('projects.show', $project->uuid)
+                ->with('success', "Ласкаво просимо до команди проєкту {$project->title}!");
 
-        // Логуємо подію
-        // Log::info("Користувач приєднався до проєкту через посилання", [
-        //     'project_id' => $project->id,
-        //     'user_id'    => Auth::id()
-        // ]);
+        } catch (\Exception $e) {
+            Log::error("Помилка приєднання до проєкту", [
+                'project_id' => $project->id,
+                'user_id' => Auth::id(),
+                'error_message' => $e->getMessage(),
+            ]);
 
-        return redirect()->route('projects.show', $project->uuid)
-            ->with('success', "Ласкаво просимо до команди проєкту {$project->title}!");
+            return redirect()->back()->with('error', 'Виникла помилка при додаванні до проєкту');
+        }
     }
 
     /**
@@ -109,15 +119,29 @@ class TeamController extends Controller
     public function updateRole(Request $request, Project $project, User $user)
     {
         // тільки власник може змінювати ролі
-        if ($project->owner_id !== auth()->id()) {abort(403, 'Тільки власник проєкту може змінювати ролі');}
+        if ($project->owner_id !== auth()->id()) return redirect()->back()->with('error', 'Тільки власник проєкту може змінювати ролі');
 
         // роль має бути зі списку дозволених в Enum
-        $validated = $request->validate(['role' => ['required', Rule::in(array_column(TeamRole::cases(), 'value'))],]);
+        $validated = $request->validate([
+            'role' => ['required', Rule::in(array_column(TeamRole::cases(), 'value'))],
+        ]);
 
-        // Оновлення запису в таблиці
-        $project->members()->updateExistingPivot($user->id, ['role' => $validated['role']]);
+        try {
+            // Оновлення запису в таблиці
+            $project->members()->updateExistingPivot($user->id, ['role' => $validated['role']]);
+    
+            return back()->with('success', 'Роль учасника успішно змінено');
 
-        return back()->with('success', 'Роль учасника успішно змінено');
+        } catch (\Exception $e) {
+            Log::error("Помилка зміни ролі учасника проєкту", [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Виникла помилка при зміненні ролі учасника');
+        }
+
     }
 
     /**
@@ -126,11 +150,24 @@ class TeamController extends Controller
     public function deleteMembers()
     {
         // тільки власник може видаляти
-        if ($project->owner_id !== auth()->id()) {abort(403, 'Тільки власник проєкту може видаляти учасників');}
+        if ($project->owner_id !== auth()->id()) return redirect()->back()->with('error', 'Тільки власник проєкту може видаляти учасників');
 
-        // Ставимо is_active = 0 у проміжній таблиці
-        $project->members()->updateExistingPivot($user->id, ['is_active' => 0]);
+        try {
+            $project->members()->updateExistingPivot($user->id, ['is_active' => 0]);
+    
+            Log::info("Користувача видалено з команди проєкту", [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+            ]);
+            return back()->with('success', 'Учасника видалено з команди.');
+        } catch (\Exception $e) {
+            Log::error("Помилка при видаленні учасника з команди", [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+                'error_message' => $e->getMessage(),
+            ]);
 
-        return back()->with('success', 'Учасника видалено з команди.');
+            return redirect()->back()->with('error', 'Виникла технічна помилка при видаленні учасника з команди');
+        }
     }
 }

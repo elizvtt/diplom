@@ -71,6 +71,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 90),
             'replace_placeholders' => true,
+            'trace' => false,
             'tap' => [App\Logging\CustomizeFormatter::class],
         ],
 

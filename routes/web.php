@@ -71,8 +71,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/projects/{project}/invitations', [InvitationController::class, 'invite'])->name('projects.invitations.store');
     Route::post('/projects/{project}/invitations/search', [InvitationController::class, 'searchUser'])->name('projects.invitations.search');
+    
     Route::post('/invitations/{invitation}/revoke', [InvitationController::class, 'revoke']);
-
+    Route::post('/invitation/{token}/accept', [InvitationController::class, 'accept'])->name('invitation.accept');
+    Route::post('/invitation/{token}/decline', [InvitationController::class, 'decline'])->name('invitation.decline');
     Route::get('/projects/{project}/join', [InvitationController::class, 'join'])->name('projects.invitations.join');
 
     // & ОЦЕНКИ
@@ -94,5 +96,7 @@ Route::middleware('auth')->group(function () {
 // сторінка тільки для адміна
 Route::middleware(['auth', 'can:admin-access'])->group(function () {
     Route::get('/admin', [AdminController::class, 'index'])->name('admin.index');
+    Route::post('/admin/logs', [AdminController::class, 'fetchLogs'])->name('admin.logs.fetch');
+    Route::get('/admin/logs', function () { return redirect()->route('admin.index'); });
     Route::post('/admin/verify-password', [AdminController::class, 'verifyPassword']);
 });

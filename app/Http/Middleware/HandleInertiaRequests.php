@@ -33,7 +33,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
-                'notifications' => fn () => $request->user()
+                'notifications' => $request->user()
                     ? $request->user()
                         ->notifications()
                         ->latest()
@@ -52,8 +52,8 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
-                // 'warning' => fn () => $request->session()->get('warning'),
-                // 'info' => fn () => $request->session()->get('info'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
             ]
         ];
     }

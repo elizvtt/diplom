@@ -30,3 +30,22 @@ export const EVENT_LABELS = {
     deadline_risk: 'Ризик зриву дедлайну',
     project_invite: 'Запрошення до проєкту'
 };
+
+export const LOG_LEVEL_STYLES = {
+    ERROR: { color: 'error', bg: '#fdecea', border: '#ff0000' },
+    EMERGENCY: { color: 'error', bg: '#fdecea', border: '#ff0000' },
+    CRITICAL: { color: 'error', bg: '#fdecea', border: '#ff0000' },
+    WARNING: { color: 'warning', bg: '#fff4e5', border: '#ff7d13' },
+    INFO: { color: 'info', bg: '#ddf1dea5', border: '#81c784' },
+    DEFAULT: { color: 'default', bg: '#f5f5f5', border: '#e0e0e0' }
+};
+
+/**
+ * Функція для отримання стилю логу за його рівнем
+ * @param {string} level 
+ * @returns {object}
+ */
+export const getLogsLevelColor = (level) => {
+    const normalizedLevel = level?.toUpperCase();
+    return LOG_LEVEL_STYLES[normalizedLevel] || LOG_LEVEL_STYLES.DEFAULT;
+};
