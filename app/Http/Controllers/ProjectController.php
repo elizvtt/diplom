@@ -3,90 +3,39 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
-
 use Inertia\Inertia;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Auth\Access\AuthorizationException;
 
 use App\Enums\TaskStatus;
 use App\Enums\TaskPriority;
 use App\Enums\TaskReminder;
 
-use App\Services\GeminiService;
-use App\Services\TaskGenerationService;
+use App\Services\ProjectService;
+use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\UpdateProjectRequest;
 
 class ProjectController extends Controller
 {
+    public function __construct(
+        private ProjectService $projectService
+    ){}
+
     /**
-     * создание проэкта
+     * создание нового проекта
      */
-    public function createProject(Request $request, GeminiService $geminiService, TaskGenerationService $taskGenerationService)
+    public function createProject(StoreProjectRequest $request)
     {
-        // Валидация данных
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:255'],
-            'generate_ai_tasks' => ['nullable', 'boolean'],
-        ], [
-            'title.required' => 'Введіть назву проєкту',
-            'title.max' => 'Надто довга назва проєкту',
-            'description.max'  => 'Опис проєкту занадто довгий',
-        ]);
-
         try {
-            $project = Project::create([
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'owner_id' => auth()->id(),
-                'is_active' => 1,
-            ]);
-
-            // Успішний лог
-            Log::info("Проєкт створено успішно", [
-                'project_id' => $project->id,
-                'ai_generation_requested' => $request->boolean('generate_ai_tasks'),
-            ]);
-            
-            if ($request->boolean('generate_ai_tasks')) {
-                Log::info("ШІ-генерація увімкнена для проєкту ID: {$project->id}");
-                // LIMIT: максимум 5 генераций в день
-                $dailyKey = 'ai-daily:' . auth()->id();
-                Log::info("dailyKey : {$dailyKey }");
-
-                if (RateLimiter::tooManyAttempts($dailyKey, 5)) {
-
-                    return redirect()->back()->with('error','Ви перевищили денний ліміт AI-генерацій');
-                }
-
-                RateLimiter::hit($dailyKey, 86400);
-
-                // LIMIT: не чаще 1 раза в минуту
-                $minuteKey = 'ai-minute:' . auth()->id();
-                Log::info("minuteKey : {$minuteKey}");
-
-                if (RateLimiter::tooManyAttempts($minuteKey, 1)) {
-
-                    $seconds = RateLimiter::availableIn($minuteKey);
-
-                    return redirect()->back()->with('error',"Спробуйте через {$seconds} сек");
-                }
-
-                RateLimiter::hit($minuteKey, 60);
-                    
-                $generatedTasks = $geminiService->generateTasks(
-                    $project->title,
-                    $project->description
-                );
-
-                $taskGenerationService->createTasks(
-                    $project,
-                    $generatedTasks
-                );
-            }
+            $this->projectService->createProject(
+                $request->validated(), 
+                $request->user()
+            );
 
             return redirect()->back()->with('success', 'Проєкт успішно створено!');
-
+        
         } catch (\Exception $e) {
     
             Log::error("Помилка при створенні проєкту", [
@@ -95,40 +44,20 @@ class ProjectController extends Controller
                 'input_data' => $request->except(['password', '_token']), // Записуємо що вводив юзер, але без секретів
             ]);
 
-            // Повертаємо користувача назад із повідомленням про помилку
-            return redirect()->back()->with('error', 'Виникла технічна помилка при створенні проєкту');
+            // Якщо це помилка лімітів AI, показуємо її, інакше стандартне повідомлення
+            $message = $e->getMessage() ?: 'Виникла технічна помилка при створенні проєкту';
+            return redirect()->back()->with('error', $message);
         }
     }
 
     /**
-     * Відображення списку всіх проєктів користувача
+     * Відображення списку всіх активних проєктів поточного користувача
+     * @param Request $request
+     * @return \Inertia\Response
      */
-    public function listAllUserProjects()
+    public function listAllUserProjects(Request $request)
     {
-        $userId = auth()->id();
-
-        $projects = Project::where('is_active', 1)
-            ->where(function ($query) use ($userId) {
-                $query->where('owner_id', $userId) // Владелец проекта
-                // ИЛИ участник команды
-                ->orWhereHas('members', function ($q) use ($userId) {
-                    $q->where('user_id', $userId);
-                });
-            })
-            ->withCount([
-                'tasks as tasks_total' => function ($query) {
-                    $query->where('is_active', 1);
-                },
-                'tasks as tasks_completed' => function ($query) {
-                    $query->where('is_active', 1)->where('status', 'done');
-                }
-            ])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($project) use ($userId) {
-                $project->is_owner = $project->owner_id === $userId;
-                return $project;
-            });
+        $projects = $this->projectService->getUserProjects($request->user());
 
         return Inertia::render('ProjectsList', [
             'projects' => $projects
@@ -137,87 +66,97 @@ class ProjectController extends Controller
 
     /**
      * Відображення сторінки конкретного проєкту
+     * @param Project $project Модель проєкту
+     * @return \Inertia\Response|\Illuminate\Http\RedirectResponse
      */
     public function show(Project $project)
     {
-        if ($project->owner_id !== auth()->id() && !$project->members->contains(auth()->id())) {
-            return redirect()->back()->with('error', 'У вас немає доступу до цього проєкту');
-        }
+        try {
+            // Перевірка прав (власник або учасник команди)
+            $this->authorize('view', $project);
 
-        // завантажуємо лічильники
-        $project->loadCount([
-            'tasks as tasks_total' => fn($q) => $q->where('is_active', 1),
-            'tasks as tasks_completed' => fn($q) => $q->where('is_active', 1)->where('status', 'done'),
-        ]);
+            // Завантаження пов'язаних даних через сервіс
+            $loadedProject = $this->projectService->loadProjectDetails($project);
 
-        $project->load([
-            'owner',
-            'members',
-            'tasks' => function ($query) {
-                $query->where('is_active', 1)
-                    ->whereNull('parent_task_id')
-                    ->with([
-                        'assignees', 
-                        'attachments', 
-                        'comments.user',
-                        'subtasks.assignees', // Завантажуємо підзадачі та їх виконавців
-                        'subtasks.attachments',
-                        'subtasks.comments.user',
-                        'subtasks.parent' // Щоб підзадача "знала" свого батька
-                    ]);
-                }
-        ]);
-
-        $teamMembers = collect([$project->owner])
-            ->merge($project->members)
-            ->unique('id')
-            ->values() // Переиндексируем массив
-            ->map(function ($user) {
-                return [
+            // Формування єдиного списку команди проєкту (власник + учасники)
+            $teamMembers = collect([$loadedProject->owner])
+                ->merge($loadedProject->members)
+                ->unique('id')
+                ->values()
+                ->map(fn($user) => [
                     'id' => $user->id,
                     'name' => $user->full_name,
-                ];
-            });
+                ]);
 
-        return Inertia::render('Project', [
-            'project' => $project,
-            'teamMembers' => $teamMembers,
+            // Повернення даних на фронт
+            return Inertia::render('Project', [
+                'project' => $loadedProject,
+                'teamMembers' => $teamMembers,
+                'statuses' => collect(TaskStatus::cases())->map(fn($s) => [
+                    'id' => $s->value,
+                    'label' => str($s->name)->headline(),
+                ]),
+                'priorities' => collect(TaskPriority::cases())->map(fn($p) => [
+                    'id' => $p->value,
+                    'label' => $p->label(),
+                ]),
+                'reminders' => collect(TaskReminder::cases())->map(fn($r) => [
+                    'id' => $r->value,
+                    'label' => $r->label(),
+                ]),
+            ]);
 
-            // Передаємо словники статусів та пріоритетів
-            'statuses' => collect(TaskStatus::cases())->map(fn($s) => [
-                'id' => $s->value,
-                'label' => str($s->name)->headline(),
-            ]),
-            'priorities' => collect(TaskPriority::cases())->map(fn($p) => [
-                'id' => $p->value,
-                'label' => $p->label(),
-            ]),
-            'reminders' => collect(TaskReminder::cases())->map(fn($r) => [
-                'id' => $r->value,
-                'label' => $r->label(), // переведенный текст
-            ]),
-        ]);
+        } catch (AuthorizationException $e) {
+            return redirect()->back()->with('error', 'У вас немає доступу до цього проєкту');
+        }
+    }
+
+    /**
+     * Редагування назви та опису проєкту.
+     * @param UpdateProjectRequest $request 
+     * @param Project $project Модель проєкту
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function editProject(UpdateProjectRequest $request, Project $project)
+    {
+        try {
+            // лише власник can delete
+            $this->authorize('update', $project);
+
+            // Оновлення через сервіс
+            $this->projectService->updateProject(
+                $project, 
+                $request->validated(), 
+                $request->user()
+            );
+
+            return redirect()->back()->with('success', 'Проєкт успішно оновлено');
+
+        } catch (AuthorizationException $e) {
+            return redirect()->back()->with('error', 'У вас немає прав для редагування цього проєкту');
+
+        } catch (\Exception $e) {
+            Log::error("Помилка при оновленні проєкту", [
+                'project_id'    => $project->id,
+                'error_message' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', 'Виникла технічна помилка при оновленні проєкту');
+        }
     }
 
     /**
      * Видалення проєкту
+     * @param Project $project Модель проєкту
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function deleteProject(Project $project)
     {
-        // Перевірка прав
-        if ($project->owner_id !== auth()->id()) {
-            return redirect()->back()->with('error', 'У вас немає прав для видалення цього проєкту');
-        }
-
         try {
-            $project->update([
-                'is_active' => 0,
-            ]);
+            // Перевірка прав
+            $this->authorize('delete', $project);
 
-            Log::info("Проєкт успішно видалено", [
-                'project_id' => $project->id,
-                'user_id' => auth()->id(),
-            ]);
+            // Видалення через сервіс
+            $this->projectService->deleteProject($project, request()->user());
 
             return redirect()->back()->with('success', 'Проєкт успішно видалено');
 
@@ -231,48 +170,4 @@ class ProjectController extends Controller
         }
     }
     
-    /**
-     * Редагування назви та опису проєкту
-     */
-    public function editProject(Request $request, Project $project)
-    {
-        if ($project->owner_id !== auth()->id()) {
-            return redirect()->back()->with('error', 'У вас немає прав для редагування цього проєкту.');
-        }
-
-        // Валідація даних
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'], // Збільшив ліміт для опису, якщо потрібно
-        ], [
-            'title.required' => 'Введіть назву проєкту',
-            'title.max' => 'Надто довга назва проєкту',
-            'description.max'  => 'Опис проєкту занадто довгий',
-        ]);
-
-        try {
-            // Оновлюємо проєкт
-            $project->update([
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-            ]);
-
-            Log::info("Проєкт успішно оновлено", [
-                'project_id' => $project->id,
-                'user_id' => auth()->id(),
-            ]);
-
-            return redirect()->back()->with('success', 'Проєкт успішно оновлено');
-
-        } catch (\Exception $e) {
-            Log::error("Помилка при оновленні проєкту", [
-                'project_id' => $project->id,
-                'error_message' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->with('error', 'Виникла технічна помилка при оновленні проєкту');
-        }
-
-    }
-
 }

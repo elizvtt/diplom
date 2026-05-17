@@ -2,82 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Grade;
 use App\Models\Project;
-use App\Models\User;
 
-use App\Notifications\SimpleNotification;
-use App\Enums\NotificationEvent;
-
-use App\Enums\TaskStatus;
+use App\Services\GradeService;
 
 use Illuminate\Http\Request;
-
 use Inertia\Inertia;
 
 class GradeController extends Controller
 {
+    public function __construct(
+        private GradeService $gradeService
+    ) {}
+    
+    /**
+     * Виведення всіх оцінок учасників проєкту
+     */
     public function showGrades(Project $project)
     {
-        $this->canGrade($project);
-
-        $project->load([
-            'members',
-            'tasks.assignees'
-        ]);
-
-        $allTasksDone = $project->tasks
-            ->every(fn ($task) => $task->status === TaskStatus::Done->value);
-
-        $students = $project->members->map(function ($member) use ($project) {
-
-            $tasks = $project->tasks
-                ->filter(fn ($task) =>
-                    $task->assignees->contains($member->id)
-                );
-            
-            $doneTasks = $tasks
-                ->where('status', TaskStatus::Done->value);
-
-            $grade = Grade::where('project_id', $project->id)
-                ->where('user_id', $member->id)
-                ->first();
-
-            return [
-                'id' => $member->id,
-                'name' => $member->full_name,
-
-                'tasks_total' => $tasks->count(),
-                'tasks_done' => $doneTasks->count(),
-
-                'task_history' => $doneTasks->values(),
-
-                'score' => $grade?->score,
-                'comment' => $grade?->comment,
-            ];
-        });
+        $this->authorize('grade', $project);
+        
+        $data = $this->gradeService->getGradesData($project);
 
         return Inertia::render('Grades', [
             'project' => $project,
-            'students' => $students,
-            'allTasksDone' => $allTasksDone,
+            'students' => $data['students'],
+            'allTasksDone' => $data['allTasksDone'],
         ]);
     }
 
-    
+    /**
+     * Збереження оцінок
+     */
     public function saveGrades(Request $request, Project $project)
     {
-        $this->canGrade($project);
+        $this->authorize('grade', $project);
 
-        $allTasksDone = $project->tasks
-            ->every(fn ($task) => $task->status === 'done');
-
-        if (!$allTasksDone) {
-            return back()->withErrors([
-                'grades' => 'Не всі завдання завершені'
-            ]);
-        }
-
+        // Перевіряємо статус задач 
+        if (!$this->gradeService->areAllTasksDone($project)) 
+            return back()->withErrors(['grades' => 'Не всі завдання завершені']);
+        
         $validated = $request->validate([
             'grades' => ['required', 'array'],
             'grades.*.user_id' => ['required'],
@@ -85,47 +49,9 @@ class GradeController extends Controller
             'grades.*.comment' => ['nullable', 'string'],
         ]);
 
-        foreach ($validated['grades'] as $item) {
-
-            $grade = Grade::updateOrCreate(
-                [
-                    'project_id' => $project->id,
-                    'user_id' => $item['user_id'],
-                ],
-                [
-                    'rated_by_id' => auth()->id(),
-                    'score' => $item['score'],
-                    'comment' => $item['comment'],
-                ]
-            );
-
-            $user = User::find($item['user_id']);
-            $user->notify(
-                new SimpleNotification([
-                    'event' => NotificationEvent::GradeChanged->value,
-                    'title' => 'Оцінку оновлено',
-                    'message' => 'Вам виставлено оцінку за проєкт',
-                    'project_id' => $project->id,
-                    'author_id' => auth()->id(),
-                    'url' => url('/projects/' . $project->uuid)
-                ])
-            );
-        }
-
-        $project->update([
-            'grading_completed' => true
-        ]);
+        $this->gradeService->saveGrades($project, $validated['grades'], $request->user());
 
         return back();
     }
 
-    private function canGrade(Project $project)
-    {
-        if (
-            $project->owner_id !== auth()->id()
-            && auth()->user()->role !== 'teacher'
-        ) {
-            return redirect()->back()->with('error', 'У вас немає прав на виставлення оцінок');
-        }
-    }
 }

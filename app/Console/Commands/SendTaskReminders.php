@@ -6,11 +6,7 @@ use Illuminate\Console\Command;
 
 use App\Models\Task;
 use App\Enums\TaskReminder;
-use App\Enums\TaskStatus;
-
-use App\Notifications\SimpleNotification;
-
-use Illuminate\Support\Facades\Log;
+use App\Events\TaskReminderTriggered;
 
 class SendTaskReminders extends Command
 {
@@ -55,50 +51,14 @@ class SendTaskReminders extends Command
                     $targetDeadline->copy()->second(59)
                 ])
                 ->where('is_active', 1)
-                ->with('project')
+                ->with(['project', 'users', 'creator'])
                 ->get();
 
             foreach ($tasks as $task) {
-                // Оскільки у завдання може бути багато виконавців
-                $assignedUsers = $task->users; 
-
-                // Якщо виконавців немає, надсилаємо автору завдання
-                if ($assignedUsers->isEmpty())
-                    $assignedUsers = collect([$task->creator]);
-
-                foreach ($assignedUsers as $user) {
-                    if (!$user) continue;
-
-                    try {
-                        $project = Project::find($task->project_id);
-
-                        $user->notify(
-                            new SimpleNotification([
-                                'event' => 'task_reminder',
-                                'title' => 'Нагадування про дедлайн',
-                                'message' => "Термін виконання завдання «{$task->title}» у проєкті «{$task->project->title}» добігає кінця: " . $task->date_end->format('d.m.Y H:i'),
-                                'project_id' => $task->project_id,
-                                'task_id' => $task->id,
-                                'author_id' => $task->creator_id,
-                                'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id,
-                            ])
-                        );
-
-                        Log::info("Нагадування надіслано користувачу", [
-                            'task_id' => $task->id,
-                            'user_id' => $user->id
-                        ]);
-
-                    } catch (\Exception $e) {
-                        Log::error("Помилка відправки нагадування", [
-                            'task_id' => $task->id,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
+                event(new TaskReminderTriggered($task));
             }
         }
-
+        $this->info('Перевірку дедлайнів успішно завершено');
         return Command::SUCCESS;
     }
 }

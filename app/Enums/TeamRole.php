@@ -5,7 +5,7 @@ namespace App\Enums;
 enum TeamRole: string
 {
     case Owner = 'owner';
-    case Editor = 'editor';
+    case Member = 'member';
 
     /**
      * Перевод
@@ -14,7 +14,7 @@ enum TeamRole: string
     {
         return match($this) {
             self::Owner => 'Власник',
-            self::Editor => 'Учасник',
+            self::Member => 'Учасник',
         };
     }
 }

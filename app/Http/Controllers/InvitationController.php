@@ -6,18 +6,20 @@ use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Project;
 
-use App\Services\InvitationService;
-
 use App\Enums\InvitationStatus;
+use App\Services\InvitationService;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class InvitationController extends Controller
 {
+    public function __construct(
+        private InvitationService $invitationService
+    ) {}
+
     /**
      * Відправити запит на приєднання до проєкту.
-     * 
      * @param Request $request
      * @param Project $project
      * @param InvitationService $service
@@ -32,7 +34,7 @@ class InvitationController extends Controller
             $service->invite(
                 email: $validated['email'],
                 project: $project,
-                inviterId: auth()->id()
+                inviter: $request->user()
             );
 
             return back()->with('success', 'Запрошення успішно надіслано');
@@ -48,6 +50,12 @@ class InvitationController extends Controller
         }
     }
 
+    /**
+     * Пошук користувача за email (for send invite)
+     * @param Request $request Вхідний запит
+     * @param Project $project Модель проєкту
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function searchUser(Request $request, Project $project)
     {
         $request->validate(['email' => 'required|email']);
@@ -66,27 +74,18 @@ class InvitationController extends Controller
 
     /**
      * Відкликати надіслане запрошення
+     * @param Invitation $invitation Модель запрошення
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function revoke(Invitation $invitation)
     {
-        // Скасувати може або автор запрошення, або власник проєкту
-        if ($invitation->project->owner_id !== auth()->id() && $invitation->invited_by_id !== auth()->id()) {
-            return redirect()->back()->with('error', 'У вас немає прав для скасування запрошення');
-        }
         try {
-            $invitation->update(['status' => InvitationStatus::Revoked->value]);
+            // Скасувати може або автор запрошення, або власник проєкту
+            $this->authorize('revoke', $invitation);
 
-            \DB::table('notifications')
-                ->where('data->invitation_id', $invitation->id)
-                ->delete();
-
-            Log::info("Запрошення успішно відкликано", [
-                'invitation_id' => $invitation->id,
-                'project_id' => $invitation->project_id,
-                'email' => $invitation->email,
-                'revoked_by' => auth()->id()
-            ]);
-
+            // Видалення та зміна статусів через сервіс
+            $this->invitationService->revoke($invitation, request()->user());
+            
             return redirect()->back()->with('success', 'Запрошення скасовано');
         } catch (\Exception $e) {
             Log::error("Помилка під час відкликання запрошення", [
@@ -97,26 +96,33 @@ class InvitationController extends Controller
         }
     }
 
+    /**
+     * Прийняття запрошення користувачем 
+     * @param string $token Унікальний токен запрошення
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function accept(string $token)
     {
+        // Пошук активного запрошення за токеном
         $invitation = Invitation::where('token', $token)
             ->where('status', InvitationStatus::Pending)
             ->firstOrFail();
 
-        // Если пользователь НЕ авторизован
+        // Если пользователь НЕ авторизован відправляємо на реєстрацію
         if (!auth()->check()) {
             session(['pending_invitation_token' => $token]);
-
             return redirect()->route('register')->with('info', 'Для прийняття запрошення спочатку зареєструйтеся');
         }
 
+        $user = auth()->user();
+
         // Проверяем email
-        if (auth()->user()->email !== $invitation->email) {
+        if ($user->email !== $invitation->email) {
             Log::warning("Спроба активації запрошення з чужого акаунту", [
                 'invitation_id' => $invitation->id,
                 'invitation_expected_email' => $invitation->email,
-                'authenticated_user_email' => auth()->user()->email,
-                'user_id' => auth()->id(),
+                'authenticated_user_email' => $user->email,
+                'user_id' => $user->id,
                 'ip' => request()->ip()
             ]);
 
@@ -124,18 +130,9 @@ class InvitationController extends Controller
         }
 
         try {
-            // Додаємо користувача до команди проєкту
-            $invitation->project->members()->attach(auth()->id());
-            // Оновлюємо статус запрошення
-            $invitation->update(['status' => InvitationStatus::Accepted]);
+            // Приєднання до команди через сервіс
+            $this->invitationService->accept($invitation, $user);
 
-            // Успішне приєднання
-            Log::info("Користувач успішно прийняв запрошення", [
-                'invitation_id' => $invitation->id,
-                'project_id' => $invitation->project_id,
-                'user_id' => auth()->id()
-            ]);
-            
             return redirect('/projects/' . $invitation->project->uuid)->with('success', 'Ви успішно приєдналися до проєкту!');
 
         } catch (\Exception $e) {
@@ -148,21 +145,28 @@ class InvitationController extends Controller
         }
     }
 
+    /**
+     * Відхилення запрошення 
+     * @param string $token Унікальний токен запрошення
+     * @return \Illuminate\View\View
+     */
     public function decline(string $token)
     {
+        // Знаходимо запрошення
         $invitation = Invitation::where('token', $token)
             ->where('status', InvitationStatus::Pending)
             ->firstOrFail();
 
-        $invitation->update([
-            'status' => InvitationStatus::Declined
-        ]);
+        $invitation->update(['status' => InvitationStatus::Declined]);
 
         return view('invitation-declined');
     }
 
     /**
      * Приєднання до проєкту через публічне посилання
+     * @param Request $request Вхідний запит
+     * @param string $projectParam UUID проєкту
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function join(Request $request, $projectParam)
     {
@@ -170,30 +174,35 @@ class InvitationController extends Controller
         if (! $request->hasValidSignature())
             return redirect('/')->with('error', 'Посилання недійсне або його термін дії закінчився');
 
-        // Якщо не авторизований користувач
+        // Якщо не авторизований користувач - зберігаємо URL і відправляємо на реєстрацію
         if (!auth()->check()) {
             // Зберігаємо ПОВНИЙ поточний URL разом із підписом (?signature=...) у сесію
             session(['pending_public_invite_url' => $request->fullUrl()]);
-
             return redirect()->route('register')->with('info', 'Для приєднання до команди проєкту спочатку зареєструйтеся або увійдіть у свій акаунт');
         }
 
+        $user = $request->user();
         $project = Project::where('uuid', $projectParam)->firstOrFail();
 
-        if ($project->members()->where('user_id', auth()->id())->exists() || $project->owner_id === auth()->id()) 
+        if ($project->members()->where('user_id', $user->id)->exists() || $project->owner_id === $user->id) 
             return redirect('/projects/' . $project->uuid)->with('info', 'Ви вже є учасником цього проєкту');
 
         try {
-            $project->members()->attach(auth()->id(), ['role' => 'student']);
+            $project->members()->attach($user->id, ['role' => 'member']);
 
             Log::info("Користувач приєднався через публічне посилання", [
                 'project_id' => $project->id,
-                'user_id' => auth()->id()
+                'user_id' => $user->id
             ]);
 
             return redirect('/projects/' . $project->uuid)->with('success', 'Вітаємо в команді проєкту!');
 
         } catch (\Exception $e) {
+            Log::error("Не вдалося приєднатися до проєкту", [
+                'project_id' => $project->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
             return redirect('/')->with('error', 'Не вдалося приєднатися до проєкту');
         }
     }

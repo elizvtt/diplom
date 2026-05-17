@@ -13,11 +13,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\NotificationController;
 
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-
-use App\Enums\UserRole;
 
 // ОСНОВНА СТОРІНКА
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -62,7 +58,7 @@ Route::middleware('auth')->group(function () {
     
     // & ПРИГЛАШЕНИЯ И КОМАНДА
     Route::get('/projects/{project}/team', [TeamController::class, 'showTeam'])->name('projects.team.show');
-    Route::post('/projects/{project}/team/{user}/delete', [TeamController::class, 'deleteMembers']);
+    Route::post('/projects/{project}/team/{user}/delete', [TeamController::class, 'removeMember']);
     Route::post('/projects/{project}/team/{user}/update', [TeamController::class, 'updateRole']);
 
     Route::post('/projects/{project}/invitations', [InvitationController::class, 'invite'])->name('projects.invitations.store');

@@ -2,19 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use App\Enums\UserRole;
+use App\Services\ProjectService;
+
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class HomeController extends Controller
 {
+    public function __construct(
+        private ProjectService $projectService
+    ) {}
+
     /**
      * Обробляє запит на головну сторінку ("/")
      */
-    public function index(ProjectController $projectController)
+    public function index(Request $request)
     {
         // Якщо користувач АВТОРИЗОВАНИЙ: делегуємо роботу ProjectController
-        if (Auth::check()) return $projectController->listAllUserProjects();
+        $user = $request->user();
+        if ($user) {
+            $projects = $this->projectService->getUserProjects($request->user());
+
+            return Inertia::render('ProjectsList', ['projects' => $projects]);
+        }
 
         // Якщо користувач ГІСТЬ: формуємо масив ролей для сторінки реєстрації
         $availableRoles = collect(UserRole::cases())

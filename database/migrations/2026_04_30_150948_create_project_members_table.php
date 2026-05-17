@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
 
-            $table->enum('role', array_column(TeamRole::cases(), 'value'))->default(TeamRole::Spectator->value);
+            $table->enum('role', array_column(TeamRole::cases(), 'value'))->default(TeamRole::Member->value);
             $table->tinyInteger('is_active')->default(1);
 
             $table->dateTime('joined_at')->nullable();

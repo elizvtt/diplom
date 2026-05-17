@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\TeamRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Enums\TeamRole;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Team extends Model
 {
@@ -28,9 +29,7 @@ class Team extends Model
     protected function casts(): array
     {
         return [
-            
             'role' => TeamRole::class,
-
         ];
     }
     

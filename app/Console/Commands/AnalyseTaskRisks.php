@@ -2,15 +2,15 @@
 
 namespace App\Console\Commands;
 
-use Carbon\Carbon;
-use App\Models\Task;
+use App\Enums\TaskPriority;
+use App\Events\TaskDeadlineRiskDetected;
+
 use App\Models\Project;
 use App\Models\RiskAssessment;
-use App\Enums\TaskPriority;
-use App\Enums\NotificationEvent;
-use App\Notifications\SimpleNotification;
+use App\Models\Task;
+
+use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class AnalyseTaskRisks extends Command
 {
@@ -22,22 +22,22 @@ class AnalyseTaskRisks extends Command
         // Беремо активні задачі, які ще не завершені
         $tasks = Task::where('is_active', 1)
             ->where('status', '!=', 'done')
-            ->with(['assignees', 'project'])
+            ->with(['assignees', 'project', 'creator'])
             ->get();
 
         $now = Carbon::now();
 
         // Групуємо таски за проєктами
-        $projects = $activeTasks->groupBy('project_id');
+        $projects = $tasks->groupBy('project_id');
 
-        foreach ($projects as $projectId => $tasks) {
+        foreach ($projects as $projectId => $projectTasks) {
             $project = Project::find($projectId);
             if (!$project) continue;
 
             // Рахуємо середню похибку проєкту за минулими завданнями
             $projectErrorHours = $this->calculateProjectErrorHours($projectId);
 
-            foreach ($tasks as $task) {
+            foreach ($projectTasks as $task) {
                 // Якщо немає дедлайну або дати початку — пропускаємо
                 if (!$task->date_end || !$task->date_start) continue;
     
@@ -103,34 +103,12 @@ class AnalyseTaskRisks extends Command
                 // Якщо раніше аналізу не було, або попередній ризик був меншим за поточний
                 $riskIncreased = !$previousAssessment || ($previousAssessment->risk_level !== $riskLevel->value);
     
-                if ($isNewHighRisk && $riskIncreased) {
-                    $project = $task->project;
-                    
-                    // Перевіряємо наявність виконавців, якщо порожньо — шлемо автору (creator)
-                    $notifyUsers = $task->assignees->isNotEmpty() ? $task->assignees : collect([$task->creator]);
-    
-                    foreach ($notifyUsers as $user) {
-                        if (!$user) continue;
-    
-                        try {
-                            $user->notify(
-                                new SimpleNotification([
-                                    'event' => NotificationEvent::DeadlineRisk->value,
-                                    'title' => 'Ризик зриву дедлайну',
-                                    'message' => "Увага! Завдання «{$task->title}» у проєкті «{$project->title}» має {$riskLevel->label()} ризик прострочення.",
-                                    'task_id' => $task->id,
-                                    'project_id' => $task->project_id,
-                                    'url' => url('/projects/' . $project->uuid),
-                                ])
-                            );
-                        } catch (\Exception $e) {
-                            Log::error("Помилка надсилання ризик-сповіщення: " . $e->getMessage());
-                        }
-                    }
-                }
+                if ($isNewHighRisk && $riskIncreased) 
+                    event(new TaskDeadlineRiskDetected($task, $riskLevel));                    
+        
             }
+        }    
 
-        }        
         $this->info('Аналіз ризиків завершено успішно');
     }
 

@@ -13,9 +13,6 @@ enum NotificationEvent: string
     case DeadlineRisk = 'deadline_risk'; // Риск срыва сроков
     case ProjectInvite = 'project_invite'; // приглашение в проэкт
     
-    // додано навчальні матеріали до завданн.
-    
-
     public function isMandatory(): bool
     {
         return in_array($this, self::mandatory(), true);
@@ -29,5 +26,3 @@ enum NotificationEvent: string
     }
 }
 
-// use App\Notifications\SimpleNotification;
-// use App\Enums\NotificationEvent;

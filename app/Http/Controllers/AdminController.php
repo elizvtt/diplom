@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Project;
-use App\Models\Task;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+use App\Services\AdminService;
+
 class AdminController extends Controller
 {
+    public function __construct(
+        private AdminService $adminService
+    ) {}
+
     /**
      * Відображення головної сторінки адмін-панелі
      */
@@ -25,109 +27,36 @@ class AdminController extends Controller
         Gate::authorize('admin-access'); // Додаткова перевірка через Gate
 
         // Перевіряємо сесію
-        if (!session()->has('admin_access_verified_at')) {
-            return redirect()->route('dashboard')->with('error', 'Будь ласка, підтвердіть пароль.');
-        }
+        if (!session()->has('admin_access_verified_at')) 
+            return redirect()->route('dashboard')->with('error', 'Будь ласка, підтвердіть пароль.');        
 
         $selectedDate = $request->input('log_date', now()->format('Y-m-d'));
 
-        // Збираємо статистику
-        $stats = [
-            'users' => [
-                'total' => User::count(),
-                'active' => User::where('is_active', 1)->count(),
-                'new_today' => User::whereDate('created_at', today())->count(),
-            ],
-
-            'projects' => [
-                'active' => Project::where('is_active', 1)->count(),
-                'inactive' => Project::where('is_active', 0)->count(),
-            ],
-
-            'tasks' => [
-                'total' => Task::where('is_active', 1)->count(),
-                'completed' => Task::where('status', 'done')->count(),
-                'overdue' => Task::whereDate('date_end', '<', now())
-                    ->where('status', '!=', 'done')
-                    ->count(),
-            ],
-        ];
-
-
-        // Отримуємо список усіх користувачів для таблиці
-        $users = User::select('id', 'full_name', 'role', 'is_active', 'email')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $projects = Project::with('owner:id,full_name')
-            ->select('id', 'title', 'is_active', 'owner_id')
-            ->withCount([
-                'tasks as tasks_total' => function ($query) {
-                    $query->where('is_active', 1);
-                },
-            ])
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $today = now()->format('Y-m-d');
-
+        // Збираємо всі необхідні дані через сервіс
         return Inertia::render('AdminPanel', [
-            'stats' => $stats,
-            'users' => $users,
-            'projects' => $projects,
-            'logs' => $this->getLogs($today),
-            'selectedDate' => $today,
-        ]);
-    }
-
-    /**
-     * Окремий POST запит для зміни дати логів
-     */
-    public function fetchLogs(Request $request)
-    {
-        Gate::authorize('admin-access');
-
-        // Беремо прийшовши з POST запиту дату
-        $selectedDate = $request->input('log_date', now()->format('Y-m-d'));
-
-        return Inertia::render('AdminPanel', [
-            'logs' => $this->getLogs($selectedDate),
+            'stats' => $this->adminService->getStatistics(),
+            'users' => $this->adminService->getUsersList(),
+            'projects' => $this->adminService->getProjectsList(),
+            'logs' => $this->adminService->getParsedLogs($selectedDate),
             'selectedDate' => $selectedDate,
         ]);
     }
 
     /**
-     * Парсинг логів за конкретну дату
+     * запит для зміни дати логів
      */
-    public function getLogs($date)
+    public function fetchLogs(Request $request)
     {
-        $logPath = storage_path("logs/laravel-{$date}.log"); // Формуємо ім'я файлу на основі дати
+        Gate::authorize('admin-access');
 
-        if (!file_exists($logPath)) return []; // Якщо файлу не існує, повертаємо порожній масив
+        $selectedDate = $request->input('log_date', now()->format('Y-m-d'));
 
-        $fileContent = file_get_contents($logPath);
-        
-        // Регулярний вираз для парсингу рядка (враховує дату, рівень, повідомлення, контекст та extra)
-        $pattern = '/\[(?P<date>.*)\] (?P<env>\w+)\.(?P<level>\w+): (?P<message>.*) (?P<context>\{.*\}) (?P<extra>\{.*\})/';
-        
-        preg_match_all($pattern, $fileContent, $matches, PREG_SET_ORDER);
-
-        $parsedLogs = array_map(function ($match) {
-            $context = json_decode($match['context'], true);
-            $extra = json_decode($match['extra'], true);
-
-            return [
-                'level' => strtoupper($match['level']),
-                'action' => $match['message'],
-                'description' => "user: " . ($extra['user']['email'] ?? 'undefined') . " (" . ($extra['user']['role'] ?? 'n/a') . ")",
-                'ip' => $extra['web']['ip'] ?? '127.0.0.1',
-                'created_at' => \Carbon\Carbon::parse($match['date'])->format('H:i:s'), // Тільки час, бо дата у назві вкладок
-                'details' => $context, 
-            ];
-        }, array_reverse($matches));
-
-        return array_slice($parsedLogs, 0, 50);
+        return Inertia::render('AdminPanel', [
+            'logs' => $this->adminService->getParsedLogs($selectedDate),
+            'selectedDate' => $selectedDate,
+        ]);
     }
+
 
     /**
      * Перевірка пароля адміністратора перед входом
@@ -143,15 +72,12 @@ class AdminController extends Controller
 
             Log::error("БЛОКУВАННЯ: Перевищено ліміт спроб входу до панелі адміністратора", [
                 'ip' => $request->ip(),
-                'user_id' => auth()->id(),
+                'user_id' => auth()-user()?->id,
                 'email' => auth()->user()?->email,
                 'block_duration_seconds' => $seconds
             ]);
 
-            throw ValidationException::withMessages([
-                'password' => "Забагато невдалих спроб. Доступ заблоковано на {$seconds} секунд.",
-            ]);
-        
+            throw ValidationException::withMessages(['password' => "Забагато невдалих спроб. Доступ заблоковано на {$seconds} секунд",]);
         }
 
         // ВАЛІДАЦІЯ ПАРОЛЯ
@@ -172,7 +98,7 @@ class AdminController extends Controller
     
             Log::warning("Невдала спроба підтвердження пароля адміністратора", [
                 'ip' => $request->ip(),
-                'user_id' => auth()->id(),
+                'user_id' => auth()->user()?->id,
                 'email' => auth()->user()?->email,
                 'attempts_left' => $attemptsLeft
             ]);
@@ -183,13 +109,10 @@ class AdminController extends Controller
     
         // Успішний вхід
         RateLimiter::clear($throttleKey);
-
-        // записуємо мітку в сесію
-        session(['admin_access_verified_at' => now()]);
+        session(['admin_access_verified_at' => now()]); // записуємо мітку в сесію
 
         // переходимо на сторінку адмінки
         return redirect()->route('admin.index')->with('success', 'Доступ підтверджено');
-
     }
 
 

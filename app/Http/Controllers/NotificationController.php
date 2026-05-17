@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Inertia\Inertia;
-
-use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
@@ -28,9 +25,7 @@ class NotificationController extends Controller
     {
         $notification = auth()->user()->notifications()->find($id);
         
-        if ($notification) {
-            $notification->markAsRead();
-        }
+        if ($notification) $notification->markAsRead();
 
         // Возвращаемся обратно (Inertia обновит данные на странице без перезагрузки)
         return back(); 

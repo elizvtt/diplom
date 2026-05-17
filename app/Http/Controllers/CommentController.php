@@ -4,10 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Task;
-use App\Models\Project;
 
-use App\Notifications\SimpleNotification;
-use App\Enums\NotificationEvent;
+use App\Events\CommentAdded;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,33 +17,20 @@ class CommentController extends Controller
         // Валідація
         $validated = $request->validate([
             'task_id' => 'required|exists:tasks,id',
-            'text'    => 'required|string|max:2000',
+            'text' => 'required|string|max:2000',
         ]);
 
         // Створення запису
-        Comment::create([
+        $comment = Comment::create([
             'task_id' => $validated['task_id'],
             'user_id' => Auth::id(), // ID поточного користувача
-            'text'    => $validated['text'],
+            'text' => $validated['text'],
         ]);
 
-        $task = Task::find($validated['task_id']);
-        $project = Project::find($task->project_id);
+        $task = Task::with(['project', 'assignees'])->find($validated['task_id']);
+        $author = $request->user();
         
-        foreach ($task->assignees as $user) {
-            if ($user->id === auth()->id()) continue;
-            $user->notify(
-                new SimpleNotification([
-                    'event' => NotificationEvent::NewComment->value,
-                    'title' => 'Новий коментар',
-                    'message' => 'Новий коментар до задачі «' . $task->title . '»',
-                    'project_id' => $task->project_id,
-                    'task_id' => $task->id,
-                    'author_id' => auth()->id(),
-                    'url' => url('/projects/' . $project->uuid) . '?task_id=' . $task->id, 
-                ])
-            );
-        }
+        event(new CommentAdded($comment, $task, $author));
 
         // Повернення назад
         return back()->with('success', 'Коментар додано');

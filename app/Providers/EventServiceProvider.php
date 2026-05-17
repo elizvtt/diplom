@@ -10,9 +10,7 @@ use App\Listeners\HandlePendingInvitation;
 class EventServiceProvider extends ServiceProvider
 {
     protected $listen = [
-        Registered::class => [
-            HandlePendingInvitation::class,
-        ],
+        Registered::class => [HandlePendingInvitation::class],
     ];
 
 }
